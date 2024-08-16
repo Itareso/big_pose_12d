@@ -25,7 +25,7 @@ class VelCosLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== OBJ VEL COS LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        box_vel_12d = preds["box_vel_12d"]
+        box_vel_12d = preds["box_kin_12d"]
         vel_predict = box_vel_12d[:, :3]
         vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
         loss = 1 - torch_f.cosine_similarity(vel_predict, vel_real, dim=1)
@@ -47,7 +47,7 @@ class AccCosLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== OBJ ACC COS LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        box_vel_12d = preds["box_vel_12d"]
+        box_vel_12d = preds["box_kin_12d"]
         acc_predict = box_vel_12d[:, 6:9]
         acc_real = targs[Queries.TARGET_ACC].to(final_loss.device)
         loss = 1 - torch_f.cosine_similarity(acc_predict, acc_real, dim=1)
@@ -69,7 +69,7 @@ class VelMagLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== OBJ VEL MAG LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        box_vel_12d = preds["box_vel_12d"]
+        box_vel_12d = preds["box_kin_12d"]
         vel_predict = box_vel_12d[:, :3]
         vel_predict_norm = torch.norm(vel_predict, dim=1)
         vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
@@ -92,7 +92,7 @@ class AccMagLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)
         # ============== OBJ ACC MAG LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        box_vel_12d = preds["box_vel_12d"]
+        box_vel_12d = preds["box_kin_12d"]
         acc_predict = box_vel_12d[:, 6:9]
         acc_predict_norm = torch.norm(acc_predict, dim=1)
         acc_real = targs[Queries.TARGET_ACC].to(final_loss.device)

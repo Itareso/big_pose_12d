@@ -45,19 +45,21 @@ class JointsLoss(TensorLoss):
 
         # ============== OBJ CORNERS 3D MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         if self.lambda_corners_3d:
-            pred_corners_3d_abs = preds["corners_3d_abs"]
-            corners_3d = targs[Queries.CORNERS_3D]  # TENSOR(B, NCORNERS, 3)
-            root_joint = targs[Queries.ROOT_JOINT]  # TENSOR(B, 3)
-            corners_3d_abs = corners_3d + root_joint.unsqueeze(1)  # TENSOR (B, NCORNERS, 3)
+            pred_corners_3d_abs_list = preds["corners_3d_abs_list"]
+            corners_3d_list = targs[Queries.CORNERS_3D_LIST]
+            root_joint_list = targs[Queries.ROOT_JOINT_LIST]
+            for i in range(5):
+                corners_3d_abs = corners_3d_list[:, i] + root_joint_list[:, i].unsqueeze(1)  # TENSOR (B, NCORNERS, 3)
+                pred_corners_3d_abs = pred_corners_3d_abs_list[i]
+                
+                # mask invisible corners
+                corners_vis_mask = targs[Queries.CORNER_VIS_LIST][:, i]
+                pred_corners_3d_abs = torch.einsum("bij,bi->bij", pred_corners_3d_abs,
+                                                corners_vis_mask.to(final_loss.device))
+                corners_3d_abs = torch.einsum("bij,bi->bij", corners_3d_abs, corners_vis_mask)
 
-            # mask invisible corners
-            corners_vis_mask = targs[Queries.CORNERS_VIS]
-            pred_corners_3d_abs = torch.einsum("bij,bi->bij", pred_corners_3d_abs,
-                                               corners_vis_mask.to(final_loss.device))
-            corners_3d_abs = torch.einsum("bij,bi->bij", corners_3d_abs, corners_vis_mask)
-
-            corners_3d_loss = torch_f.mse_loss(pred_corners_3d_abs, corners_3d_abs.to(final_loss.device))
-            final_loss += self.lambda_corners_3d * corners_3d_loss
+                corners_3d_loss = torch_f.mse_loss(pred_corners_3d_abs, corners_3d_abs.to(final_loss.device))
+                final_loss += self.lambda_corners_3d * corners_3d_loss
         else:
             corners_3d_loss = None
         losses["corners_3d_loss"] = corners_3d_loss

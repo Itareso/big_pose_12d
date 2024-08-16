@@ -103,7 +103,7 @@ class OakInkImage(HOdata):
         self.cache_identifier_dict = {
             "data_split": self._data_split,
             "split_mode": self._mode_split,
-            "cache_version": 3
+            "cache_version": 0
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
@@ -149,13 +149,13 @@ class OakInkImage(HOdata):
                 north_west_max = int(north_west_files[-1].split("_")[-1].split(".")[0])
                 south_west_min = int(south_west_files[0].split("_")[-1].split(".")[0])
                 south_west_max = int(south_west_files[-1].split("_")[-1].split(".")[0])
-                if info[3] == 0 and (info[2] == north_east_min or info[2] == north_east_max):
+                if info[3] == 0 and (info[2] <= north_east_min+1 or info[2] >= north_east_max-1):
                     counter += 1
-                elif info[3] == 1 and (info[2] == south_east_min or info[2] == south_east_max):
+                elif info[3] == 1 and (info[2] <= south_east_min+1 or info[2] >= south_east_max-1):
                     counter += 1
-                elif info[3] == 2 and (info[2] == north_west_min or info[2] == north_west_max):
+                elif info[3] == 2 and (info[2] <= north_west_min+1 or info[2] >= north_west_max-1):
                     counter += 1
-                elif info[3] == 3 and (info[2] == south_west_min or info[2] == south_west_max):
+                elif info[3] == 3 and (info[2] <= south_west_min+1 or info[2] >= south_west_max-1):
                     counter += 1
                 else:
                     self.info_list.append(info)
@@ -211,28 +211,16 @@ class OakInkImage(HOdata):
     def get_info_str(self, idx):
         return self.info_str_list[idx]
 
-    def get_image_path(self, idx):
+    def get_image_path(self, idx, seq = 0):
         info = self.info_list[idx]
         # compute image path
-        offset = os.path.join(info[0], f"{self.framedata_color_name[info[3]]}_{info[2]}.png")
+        offset = os.path.join(info[0], f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.png")
         image_path = os.path.join(self._data_dir, "image", "stream_release_v2", offset)
         return image_path
 
-    def get_image(self, idx):
-        path = self.get_image_path(idx)
-        image = Image.open(path).convert("RGB")
-        return image
-
-    def get_next_image(self, idx):
+    def get_image(self, idx, seq = 0):
         info = self.info_list[idx]
-        offset = os.path.join(info[0], f"{self.framedata_color_name[info[3]]}_{info[2] + 1}.png")
-        image_path = os.path.join(self._data_dir, "image", "stream_release_v2", offset)
-        image = Image.open(image_path).convert("RGB")
-        return image
-
-    def get_prev_image(self, idx):
-        info = self.info_list[idx]
-        offset = os.path.join(info[0], f"{self.framedata_color_name[info[3]]}_{info[2] - 1}.png")
+        offset = os.path.join(info[0], f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.png")
         image_path = os.path.join(self._data_dir, "image", "stream_release_v2", offset)
         image = Image.open(image_path).convert("RGB")
         return image
@@ -274,8 +262,11 @@ class OakInkImage(HOdata):
             cam_intr = pickle.load(f)
         return cam_intr
 
-    def get_joints_3d(self, idx):
-        joints_path = os.path.join(self._data_dir, "image", "anno", "hand_j", f"{self.info_str_list[idx]}.pkl")
+    def get_joints_3d(self, idx, seq = 0):
+        info = self.info_list[idx][:]
+        info[2] += seq
+        info_str = self._get_info_str(info)
+        joints_path = os.path.join(self._data_dir, "image", "anno", "hand_j", f"{info_str}.pkl")
         with open(joints_path, "rb") as f:
             joints_3d = pickle.load(f)
         return joints_3d

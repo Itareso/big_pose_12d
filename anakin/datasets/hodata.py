@@ -327,29 +327,41 @@ class HOdata(ABC):
         bbox_scale *= self.bbox_expand_ratio
 
         img = self.get_image(idx)
-        prev_img = self.get_prev_image(idx)
-        next_img = self.get_next_image(idx)
+        img_list = []
+        for i in [-2, -1, 0, 1, 2]:
+            img_list.append(self.get_image(idx, seq = i))
         cam_intr = self.get_cam_intr(idx)
         joints_3d = self.get_joints_3d(idx)
+        joints_3d_list = []
+        for i in [-2, -1, 0, 1, 2]:
+            joints_3d_list.append(self.get_joints_3d(idx, seq = i))
         joints_2d = self.get_joints_2d(idx)
         corners_3d = self.get_corners_3d(idx)
+        corners_3d_list = []
+        for i in [-2, -1, 0, 1, 2]:
+            corners_3d_list.append(self.get_corners_3d(idx, seq = i))
         corners_2d = self.get_corners_2d(idx)
-        prev_corners_2d = self.get_corners_2d(idx, -1)
-        next_corners_2d = self.get_corners_2d(idx, 1)
+        corners_2d_list = []
+        for i in [-2, -1, 0, 1, 2]:
+            corners_2d_list.append(self.get_corners_2d(idx, seq = i))
         corners_can = self.get_corners_can(idx)
 
         # Flip 2d if needed
         if flip:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
-            prev_img = prev_img.transpose(Image.FLIP_LEFT_RIGHT)
-            next_img = next_img.transpose(Image.FLIP_LEFT_RIGHT)
+            for i in range(len(img_list)):
+                img_list[i] = img_list[i].transpose(Image.FLIP_LEFT_RIGHT)
             bbox_center[0] = self.raw_size[0] - bbox_center[0]  # image center
             joints_3d = self._flip_3d(joints_3d)
+            for i in range(len(joints_3d_list)):
+                joints_3d_list[i] = self._flip_3d(joints_3d_list[i])
             corners_3d = self._flip_3d(corners_3d)
+            for i in range(len(corners_3d_list)):
+                corners_3d_list[i] = self._flip_3d(corners_3d_list[i])
             joints_2d = self._flip_2d(self.raw_size, joints_2d)
             corners_2d = self._flip_2d(self.raw_size, corners_2d)
-            prev_corners_2d = self._flip_2d(self.raw_size, prev_corners_2d)
-            next_corners_2d = self._flip_2d(self.raw_size, next_corners_2d)
+            for i in range(len(corners_2d_list)):
+                corners_2d_list[i] = self._flip_2d(self.raw_size, corners_2d_list[i])
 
         # Data augmentation
         if self.aug:
@@ -395,6 +407,17 @@ class HOdata(ABC):
         joints_2d = transform.transform_coords(joints_2d, affine_transf).astype(np.float32)
         sample[Queries.JOINTS_2D] = joints_2d
 
+        root_joint_list = []
+        for i in range(len(joints_3d_list)):
+            _joints_3d = rot_mat.dot(joints_3d_list[i].transpose(1, 0)).transpose()
+            _root_joint = _joints_3d[self.center_idx]
+            root_joint_list.append(_root_joint)
+            corners_3d_list[i] = rot_mat.dot(corners_3d_list[i].transpose(1, 0)).transpose()
+            joints_3d_list[i] = _joints_3d - _root_joint
+        sample[Queries.JOINTS_3D_LIST] = np.array(joints_3d_list)
+        sample[Queries.ROOT_JOINT_LIST] = np.array(root_joint_list)
+        sample[Queries.CORNERS_3D_LIST] = np.array(corners_3d_list)
+
         joints_vis = self.get_joints_vis(idx)
         if self.data_split not in ["train", "trainval"]:
             sample[Queries.JOINTS_VIS] = np.full(CONST.NUM_JOINTS, 1.0, dtype=np.float32)
@@ -411,8 +434,8 @@ class HOdata(ABC):
 
         sample[Queries.CORNERS_3D] = corners_3d - root_joint  # * make it root relative
         corners_2d = transform.transform_coords(corners_2d, affine_transf).astype(np.float32)
-        prev_corners_2d = transform.transform_coords(prev_corners_2d, affine_transf).astype(np.float32)
-        next_corners_2d = transform.transform_coords(next_corners_2d, affine_transf).astype(np.float32)
+        for i in range(len(corners_2d_list)):
+            corners_2d_list[i] = transform.transform_coords(corners_2d_list[i], affine_transf).astype(np.float32)
         sample[Queries.CORNERS_2D] = corners_2d
         sample[Queries.CORNERS_CAN] = corners_can
         sample[Queries.OBJ_IDX] = self.get_obj_idx(idx)
@@ -423,47 +446,60 @@ class HOdata(ABC):
         # object transform: T,   O3D = T @ O_CAN
         base_trasnf = self.get_obj_transf(idx)
         sample[Queries.OBJ_TRANSF] = base_transf2obj_transf(base_trasnf, rot_mat)
-        prev_base_transf = self.get_obj_transf(idx, -1)
-        sample[Queries.PREV_OBJ_TRANSF] = base_transf2obj_transf(prev_base_transf, rot_mat)
-        next_base_transf = self.get_obj_transf(idx, 1)
-        sample[Queries.NEXT_OBJ_TRANSF] = base_transf2obj_transf(next_base_transf, rot_mat)
+        sample[Queries.OBJ_TRANSF_LIST] = []
+        for i in [-2, -1, 0, 1, 2]:
+            _obj_transf = self.get_obj_transf(idx, i)
+            sample[Queries.OBJ_TRANSF_LIST].append(base_transf2obj_transf(_obj_transf, rot_mat))
+        sample[Queries.OBJ_TRANSF_LIST] = np.array(sample[Queries.OBJ_TRANSF_LIST])
+        
+
 
         corners_vis = self.get_corners_vis(idx)
         get_corners_vis(corners_vis, sample, self.data_split, corners_2d, self.image_size, Queries.CORNERS_VIS)
-        prev_corners_vis = self.get_corners_vis(idx, -1)
-        get_corners_vis(prev_corners_vis, sample, self.data_split, prev_corners_2d, self.image_size, Queries.PREV_CORNERS_VIS)
-        next_corners_vis = self.get_corners_vis(idx, 1)
-        get_corners_vis(next_corners_vis, sample, self.data_split, next_corners_2d, self.image_size, Queries.NEXT_CORNERS_VIS)
+        corners_vis_list = []
+        for i in [-2, -1, 0, 1, 2]:
+            _corners_vis = self.get_corners_vis(idx, i)
+            if self.data_split not in ["train", "trainval"]:
+                _corners_vis = np.full(CONST.NUM_CORNERS, 1.0, dtype=np.float32)  # all 1
+            elif _corners_vis.sum() < CONST.NUM_CORNERS * 0.4:  # magic number
+                # corners invisible in raw image
+                _corners_vis = np.full(CONST.NUM_CORNERS, 0.0, dtype=np.float32)  # all 0
+            else:
+                corners_vis_aug = (((corners_2d_list[i][:, 0] >= 0) & (corners_2d_list[i][:, 0] < self.image_size[0])) &
+                                    ((corners_2d_list[i][:, 1] >= 0) & (corners_2d_list[i][:, 1] < self.image_size[1]))).astype(np.float32)
+                if corners_vis_aug.sum() < CONST.NUM_CORNERS * 0.4:  # magic number
+                    _corners_vis = np.full(CONST.NUM_CORNERS, 0.0, dtype=np.float32)
+                else:
+                    _corners_vis = corners_vis_aug
+            corners_vis_list.append(_corners_vis)
+        sample[Queries.CORNER_VIS_LIST] = np.array(corners_vis_list)
 
         if self.aug:
             blur_radius = Uniform(low=0, high=1).sample().item() * self.blur_radius
             img = img.filter(ImageFilter.GaussianBlur(blur_radius))
-            prev_img = prev_img.filter(ImageFilter.GaussianBlur(blur_radius))
-            next_img = next_img.filter(ImageFilter.GaussianBlur(blur_radius))
+            for i in range(len(img_list)):
+                img_list[i] = img_list[i].filter(ImageFilter.GaussianBlur(blur_radius))
             B, C, S, H = img_augment.get_color_params(brightness=self.brightness,
                                                       saturation=self.saturation,
                                                       hue=self.hue,
                                                       contrast=self.contrast)
             img = img_augment.apply_jitter(img, brightness=B, contrast=C, saturation=S, hue=H)
-            prev_img = img_augment.apply_jitter(prev_img, brightness=B, contrast=C, saturation=S, hue=H)
-            next_img = img_augment.apply_jitter(next_img, brightness=B, contrast=C, saturation=S, hue=H)
+            for i in range(len(img_list)):
+                img_list[i] = img_augment.apply_jitter(img_list[i], brightness=B, contrast=C, saturation=S, hue=H)
 
         img = img_augment.transform_img(img, affine_transf, self.image_size)
         img = img.crop((0, 0, self.image_size[0], self.image_size[1]))
         img = tvF.to_tensor(img).float()
         img = tvF.normalize(img, [0.5, 0.5, 0.5], [1, 1, 1])
-        prev_img = img_augment.transform_img(prev_img, affine_transf, self.image_size)
-        prev_img = prev_img.crop((0, 0, self.image_size[0], self.image_size[1]))
-        prev_img = tvF.to_tensor(prev_img).float()
-        prev_img = tvF.normalize(prev_img, [0.5, 0.5, 0.5], [1, 1, 1])
-        next_img = img_augment.transform_img(next_img, affine_transf, self.image_size)
-        next_img = next_img.crop((0, 0, self.image_size[0], self.image_size[1]))
-        next_img = tvF.to_tensor(next_img).float()
-        next_img = tvF.normalize(next_img, [0.5, 0.5, 0.5], [1, 1, 1])
+        for i in range(len(img_list)):
+            img_list[i] = img_augment.transform_img(img_list[i], affine_transf, self.image_size)
+            img_list[i] = img_list[i].crop((0, 0, self.image_size[0], self.image_size[1]))
+            img_list[i] = tvF.to_tensor(img_list[i]).float()
+            img_list[i] = tvF.normalize(img_list[i], [0.5, 0.5, 0.5], [1, 1, 1])
+
 
         sample[Queries.IMAGE] = img
-        sample[Queries.PREV_IMAGE] = prev_img
-        sample[Queries.NEXT_IMAGE] = next_img
+        sample[Queries.IMAGE_LIST] = img_list
         sample[Queries.SAMPLE_IDX] = idx
 
         sample[Queries.TARGET_VEL] = self.get_real_vel(idx)

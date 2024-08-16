@@ -16,11 +16,14 @@ print(type(model_res34))
 
 print(model_res34.keys())
 
-conv1_weight = model_res34["conv1.weight"]
-conv1_weight1 = conv1_weight.clone()
-conv1_weight2 = conv1_weight.clone()
-conv1_weight_new = torch.cat((conv1_weight, conv1_weight1, conv1_weight2), dim=1)
-print(conv1_weight_new.shape)
-model_res34["conv1.weight"] = conv1_weight_new
+# conv1_weight = model_res34["conv1.weight"]
+# conv1_weight1 = conv1_weight.clone()
+# conv1_weight2 = conv1_weight.clone()
+# conv1_weight3 = conv1_weight.clone()
+# conv1_weight4 = conv1_weight.clone()
+# conv1_weight_new = torch.cat((conv1_weight, conv1_weight1, conv1_weight2, conv1_weight3, conv1_weight4), dim=1)
+# print(conv1_weight_new.shape)
+# model_res34["conv1.weight"] = conv1_weight_new
 
+print(model_res34["conv1.weight"].shape)
 torch.save(model_res34, "checkpoints/resnet34_pretrained.pth.tar")

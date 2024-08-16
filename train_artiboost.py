@@ -156,7 +156,7 @@ def epoch_pass(
 
 def main_worker(time_f: float):
     recorder = Recorder(arg.exp_id, cfg, time_f=time_f)
-    summarizer = Summarizer(arg.exp_id, cfg, tensorboard_path="./runs_new",time_f=time_f)
+    summarizer = Summarizer(arg.exp_id, cfg, tensorboard_path="./runs",time_f=time_f)
     logger.info(f"dump args: {arg, cfg['TRAIN']}")
 
     # region >>>>>>>>>>>>>>>>>>>> load test data >>>>>>>>>>>>>>>>>>>>

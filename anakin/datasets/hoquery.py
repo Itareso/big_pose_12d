@@ -20,22 +20,23 @@ class Queries(metaclass=ImmutableClass):
     CORNERS_CAN = "corners_can"
     CORNERS_2D = "corners_2d"
     CORNERS_3D = "corners_3d"
+    CORNERS_3D_LIST = "corners_3d_list"
     JOINTS_2D = "joints_2d"
     JOINTS_3D = "joints_3d"
+    JOINTS_3D_LIST = "joints_3d_list"
     ROOT_JOINT = "root_joint"
+    ROOT_JOINT_LIST = "root_joint_list"
     BONE_SCALE = "bone_scale"
 
     JOINTS_HEATMAP = "joints_heatmap"
     CORNERS_HEATMAP = "corners_heatmap"
 
     CORNERS_VIS = "corners_vis"
-    PREV_CORNERS_VIS = "prev_corners_vis"
-    NEXT_CORNERS_VIS = "next_corners_vis"
+    CORNER_VIS_LIST = "corner_vis_list"
     JOINTS_VIS = "joints_vis"
 
     OBJ_TRANSF = "obj_transf"
-    PREV_OBJ_TRANSF = "prev_obj_transf"
-    NEXT_OBJ_TRANSF = "next_obj_transf"
+    OBJ_TRANSF_LIST = "obj_transf_list"
     OBJ_FACES = "obj_faces"
     HAND_SHAPE = "hand_shape"
     HAND_POSE = "hand_pose"  # deprecated in the future
@@ -60,8 +61,7 @@ class Queries(metaclass=ImmutableClass):
     LABEL_PATH = "label_path"
     INFO_STR = "info_str"
 
-    PREV_IMAGE = "prev_image"
-    NEXT_IMAGE = "next_image"
+    IMAGE_LIST = "image_list"
 
     GRASP_IDX = "grasp_idx"
 
