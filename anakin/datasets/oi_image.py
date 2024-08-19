@@ -103,7 +103,7 @@ class OakInkImage(HOdata):
         self.cache_identifier_dict = {
             "data_split": self._data_split,
             "split_mode": self._mode_split,
-            "cache_version": 0
+            "cache_version": 1
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()

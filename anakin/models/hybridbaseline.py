@@ -31,28 +31,28 @@ class HybridBaseline(nn.Module):
         self.center_idx = cfg["DATA_PRESET"].get("CENTER_IDX", 9)
         self.inp_res = cfg["DATA_PRESET"]["IMAGE_SIZE"]
 
-        # self.backbone1 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
-        # self.backbone2 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
-        # self.backbone3 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
-        # self.backbone4 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
-        # self.backbone5 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
-        self.backbone = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        self.backbone1 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        self.backbone2 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        self.backbone3 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        self.backbone4 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        self.backbone5 = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
+        #self.backbone = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
 
-        # self.hybrid_head1 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])  # IntegralDeconvHead
-        # self.hybrid_head2 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        # self.hybrid_head3 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        # self.hybrid_head4 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        # self.hybrid_head5 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        self.hybrid_head = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        self.hybrid_head1 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])  # IntegralDeconvHead
+        self.hybrid_head2 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        self.hybrid_head3 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        self.hybrid_head4 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        self.hybrid_head5 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        #self.hybrid_head = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
 
         self.box_head_kin = build_model(cfg["BOX_HEAD_KIN"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
 
-        # self.box_head_pose1 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        # self.box_head_pose2 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        # self.box_head_pose3 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        # self.box_head_pose4 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        # self.box_head_pose5 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose1 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose2 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose3 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose4 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose5 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        #self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
 
         self.init_weights(pretrained=cfg["PRETRAINED"])
         logger.info(f"{type(self).__name__} uses center_idx {self.center_idx}")
@@ -75,31 +75,31 @@ class HybridBaseline(nn.Module):
 
         #features[res_layer4].shape=128, 512, 7, 7
         features_list = []
-        # features_list.append(self.backbone1(image = images[0]))
-        # features_list.append(self.backbone2(image = images[1]))
-        # features_list.append(self.backbone3(image = images[2]))
-        # features_list.append(self.backbone4(image = images[3]))
-        # features_list.append(self.backbone5(image = images[4]))
-        for i in range(5):
-            features_list.append(self.backbone(image = images[i]))
+        features_list.append(self.backbone1(image = images[0]))
+        features_list.append(self.backbone2(image = images[1]))
+        features_list.append(self.backbone3(image = images[2]))
+        features_list.append(self.backbone4(image = images[3]))
+        features_list.append(self.backbone5(image = images[4]))
+        # for i in range(5):
+        #     features_list.append(self.backbone(image = images[i]))
 
         pose_results_list = []
-        # pose_results_list.append(self.hybrid_head1(feature = features_list[0]["res_layer4"]))
-        # pose_results_list.append(self.hybrid_head2(feature = features_list[1]["res_layer4"]))
-        # pose_results_list.append(self.hybrid_head3(feature = features_list[2]["res_layer4"]))
-        # pose_results_list.append(self.hybrid_head4(feature = features_list[3]["res_layer4"]))
-        # pose_results_list.append(self.hybrid_head5(feature = features_list[4]["res_layer4"]))
-        for i in range(5):
-            pose_results_list.append(self.hybrid_head(feature = features_list[i]["res_layer4"]))
+        pose_results_list.append(self.hybrid_head1(feature = features_list[0]["res_layer4"]))
+        pose_results_list.append(self.hybrid_head2(feature = features_list[1]["res_layer4"]))
+        pose_results_list.append(self.hybrid_head3(feature = features_list[2]["res_layer4"]))
+        pose_results_list.append(self.hybrid_head4(feature = features_list[3]["res_layer4"]))
+        pose_results_list.append(self.hybrid_head5(feature = features_list[4]["res_layer4"]))
+        # for i in range(5):
+        #     pose_results_list.append(self.hybrid_head(feature = features_list[i]["res_layer4"]))
         
         box_rot_6d_list = []
-        # box_rot_6d_list.append(self.box_head_pose1(features_list[0]["res_layer4_mean"]))
-        # box_rot_6d_list.append(self.box_head_pose2(features_list[1]["res_layer4_mean"]))
-        # box_rot_6d_list.append(self.box_head_pose3(features_list[2]["res_layer4_mean"]))
-        # box_rot_6d_list.append(self.box_head_pose4(features_list[3]["res_layer4_mean"]))
-        # box_rot_6d_list.append(self.box_head_pose5(features_list[4]["res_layer4_mean"]))
-        for i in range(5):
-            box_rot_6d_list.append(self.box_head_pose(features_list[i]["res_layer4_mean"]))
+        box_rot_6d_list.append(self.box_head_pose1(features_list[0]["res_layer4_mean"]))
+        box_rot_6d_list.append(self.box_head_pose2(features_list[1]["res_layer4_mean"]))
+        box_rot_6d_list.append(self.box_head_pose3(features_list[2]["res_layer4_mean"]))
+        box_rot_6d_list.append(self.box_head_pose4(features_list[3]["res_layer4_mean"]))
+        box_rot_6d_list.append(self.box_head_pose5(features_list[4]["res_layer4_mean"]))
+        # for i in range(5):
+        #     box_rot_6d_list.append(self.box_head_pose(features_list[i]["res_layer4_mean"]))
         
         #mlp_input = torch.concat((features1["res_layer4_mean"], features2["res_layer4_mean"], features3["res_layer4_mean"]), dim=1)
         kin_mlp_input = torch.concat((features_list[0]["res_layer4_mean"], 
@@ -191,20 +191,20 @@ class HybridBaseline(nn.Module):
             Add init for other modules
             ...
             """
-            # self.backbone2.load_state_dict(self.backbone1.state_dict())
-            # self.backbone3.load_state_dict(self.backbone1.state_dict())
-            # self.backbone4.load_state_dict(self.backbone1.state_dict())
-            # self.backbone5.load_state_dict(self.backbone1.state_dict())
+            self.backbone2.load_state_dict(self.backbone1.state_dict())
+            self.backbone3.load_state_dict(self.backbone1.state_dict())
+            self.backbone4.load_state_dict(self.backbone1.state_dict())
+            self.backbone5.load_state_dict(self.backbone1.state_dict())
 
-            # self.hybrid_head2.load_state_dict(self.hybrid_head1.state_dict())
-            # self.hybrid_head3.load_state_dict(self.hybrid_head1.state_dict())
-            # self.hybrid_head4.load_state_dict(self.hybrid_head1.state_dict())
-            # self.hybrid_head5.load_state_dict(self.hybrid_head1.state_dict())
+            self.hybrid_head2.load_state_dict(self.hybrid_head1.state_dict())
+            self.hybrid_head3.load_state_dict(self.hybrid_head1.state_dict())
+            self.hybrid_head4.load_state_dict(self.hybrid_head1.state_dict())
+            self.hybrid_head5.load_state_dict(self.hybrid_head1.state_dict())
 
-            # self.box_head_pose2.load_state_dict(self.box_head_pose1.state_dict())
-            # self.box_head_pose3.load_state_dict(self.box_head_pose1.state_dict())
-            # self.box_head_pose4.load_state_dict(self.box_head_pose1.state_dict())
-            # self.box_head_pose5.load_state_dict(self.box_head_pose1.state_dict())
+            self.box_head_pose2.load_state_dict(self.box_head_pose1.state_dict())
+            self.box_head_pose3.load_state_dict(self.box_head_pose1.state_dict())
+            self.box_head_pose4.load_state_dict(self.box_head_pose1.state_dict())
+            self.box_head_pose5.load_state_dict(self.box_head_pose1.state_dict())
         elif os.path.isfile(pretrained):
             # pretrained_state_dict = torch.load(pretrained)
             logger.info(f"=> Loading {type(self).__name__} pretrained model from: {pretrained}")

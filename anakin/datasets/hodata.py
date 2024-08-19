@@ -416,7 +416,7 @@ class HOdata(ABC):
             joints_3d_list[i] = _joints_3d - _root_joint
         sample[Queries.JOINTS_3D_LIST] = np.array(joints_3d_list)
         sample[Queries.ROOT_JOINT_LIST] = np.array(root_joint_list)
-        sample[Queries.CORNERS_3D_LIST] = np.array(corners_3d_list)
+        
 
         joints_vis = self.get_joints_vis(idx)
         if self.data_split not in ["train", "trainval"]:
@@ -433,6 +433,8 @@ class HOdata(ABC):
                 sample[Queries.JOINTS_VIS] = joints_vis_aug
 
         sample[Queries.CORNERS_3D] = corners_3d - root_joint  # * make it root relative
+        for i in range(len(corners_3d_list)):
+            corners_3d_list[i] = corners_3d_list[i] - root_joint_list[i]
         corners_2d = transform.transform_coords(corners_2d, affine_transf).astype(np.float32)
         for i in range(len(corners_2d_list)):
             corners_2d_list[i] = transform.transform_coords(corners_2d_list[i], affine_transf).astype(np.float32)
@@ -440,6 +442,7 @@ class HOdata(ABC):
         sample[Queries.CORNERS_CAN] = corners_can
         sample[Queries.OBJ_IDX] = self.get_obj_idx(idx)
         sample[Queries.GRASP_IDX] = self.get_grasp_idx(idx)
+        sample[Queries.CORNERS_3D_LIST] = np.array(corners_3d_list)
 
 
 
