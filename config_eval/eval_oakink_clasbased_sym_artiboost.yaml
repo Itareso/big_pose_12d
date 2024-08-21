@@ -44,7 +44,7 @@ TRAIN:
   BATCH_SIZE: 128
   EPOCH: 100
   OPTIMIZER: 'adam'
-  LR: 0.00005
+  LR: 0.0001
   LR_FACTOR: 0.1
   WEIGHT_DECAY: 0
   LR_DECAY_STEP: 100
@@ -79,7 +79,7 @@ ARCH:
     FINAL_CONV_KERNEL: 1
   BOX_HEAD_KIN:
     TYPE: MLP_O
-    LAYERS_N: [2560, 256, 128]
+    LAYERS_N: [512, 256, 128]
     OUT_CHANNEL: 12
   BOX_HEAD_POSE:
     TYPE: MLP_O
@@ -89,7 +89,7 @@ ARCH:
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.001, 0.01, 0.001, 0.001, 0.001, 0.00001]
+LAMBDAS: [0.5, 0.2, 0.001, 0.01, 0.001, 0.001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
@@ -99,8 +99,6 @@ CRITERION:
   - TYPE: VelMagLoss
   - TYPE: AccCosLoss
   - TYPE: AccMagLoss
-  - TYPE: MSEOmegaLoss
-  - TYPE: MSEBetaLoss
 
 EVALUATOR:
   - TYPE: LossesMetric
