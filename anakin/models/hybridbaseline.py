@@ -70,7 +70,7 @@ class HybridBaseline(nn.Module):
         #128, 15, 224, 224
 
         #features[res_layer4].shape=128, 512, 7, 7
-        features = self.backbone(image =images)
+        features = self.backbone(image = images)
         # for i in range(5):
         #     features_list.append(self.backbone(image = images[i]))
 

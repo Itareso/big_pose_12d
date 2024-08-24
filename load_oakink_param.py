@@ -45,17 +45,6 @@ def compute_pos_and_rot(corners3d, ortho6d):
     quat = R.from_matrix(rot).as_quat()
     return center, quat
 
-# get gt position and quaternion from label path
-def get_trans_rot(label_path, grasp_idx):
-    label_path = os.path.join(dataset_path, label_path)
-    states = np.load(label_path)["pose_y"]
-    rot_matrix = states[grasp_idx,:,0:3]
-    trans_matrix = states[grasp_idx,:,3]
-    quat = R.from_matrix(rot_matrix).as_quat()
-    trans_matrix = np.expand_dims(trans_matrix, axis=0)
-    quat = np.expand_dims(quat, axis=0)
-    return trans_matrix, quat
-
 set_all_seeds(cfg["TRAIN"]["MANUAL_SEED"])
 
 model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRESET"])
@@ -102,18 +91,18 @@ for batch_idx, batch in enumerate(test_loader):
     target_obj_transf = batch['obj_transf']
     target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
     predict = model(batch)
-    predict_6d = predict['HybridBaseline']['box_vel_12d']
+    predict_6d = predict['HybridBaseline']['box_kin_12d']
     predict_vel = predict_6d[:, 0:3]
     predict_omega = predict_6d[:, 3:6]
     predict_acc = predict_6d[:, 6:9]
     predict_beta = predict_6d[:, 9:12]
 
     corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    prev_corner_3d_abs = predict['HybridBaseline']["prev_corners_3d_abs"]
-    next_corner_3d_abs = predict['HybridBaseline']["next_corners_3d_abs"]
+    prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
+    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][3]
     box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    prev_box_rot_6d = predict['HybridBaseline']["prev_box_rot_6d"]
-    next_box_rot_6d = predict['HybridBaseline']["next_box_rot_6d"]
+    prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
+    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][3]
     fps = 30
     vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
     vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)

@@ -116,14 +116,14 @@ for batch_idx, batch in enumerate(test_loader):
     _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
 
     if last_seq_id is None:
-        original_obj_transf = batch['prev_obj_transf']
+        original_obj_transf = batch['obj_transf_list'][:,1]
         original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
         original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
         gt_trans = [original_trans]
         gt_rot = [original_rot]
 
-        prev_corner_3d_abs = predict['HybridBaseline']["prev_corners_3d_abs"]
-        prev_box_rot_6d = predict['HybridBaseline']["prev_box_rot_6d"]
+        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
+        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
         prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
         predict_trans = [prev_trans]
         predict_rot = [prev_rot]
@@ -157,14 +157,14 @@ for batch_idx, batch in enumerate(test_loader):
         except:
             print(f"Error:{info_save}_{obj_name}")
 
-        original_obj_transf = batch['prev_obj_transf']
+        original_obj_transf = batch['obj_transf_list'][:,1]
         original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
         original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
         gt_trans = [original_trans, cur_trans]
         gt_rot = [original_rot, cur_rot]
 
-        prev_corner_3d_abs = predict['HybridBaseline']["prev_corners_3d_abs"]
-        prev_box_rot_6d = predict['HybridBaseline']["prev_box_rot_6d"]
+        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
+        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
         prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
         predict_trans = [prev_trans, _trans]
         predict_rot = [prev_rot, _rot]
@@ -191,12 +191,12 @@ for batch_idx, batch in enumerate(test_loader):
     predict_trans.append(_trans)
     predict_rot.append(_rot)
 
-    target_obj_transf = batch['next_obj_transf']
+    target_obj_transf = batch['obj_transf_list'][:,3]
     target_trans = target_obj_transf[0, :3, 3].detach().cpu().numpy()
     target_rot = target_obj_transf[0, :3, 0:3].detach().cpu().numpy()
 
-    next_corner_3d_abs = predict['HybridBaseline']["next_corners_3d_abs"]
-    next_box_rot_6d = predict['HybridBaseline']["next_box_rot_6d"]
+    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][3]
+    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][3]
     next_trans, next_rot = compute_pos_and_rot(next_corner_3d_abs, next_box_rot_6d)
 
     gt_trans.append(cur_trans)
