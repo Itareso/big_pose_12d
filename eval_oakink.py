@@ -65,21 +65,22 @@ counter = 0
 
 crit_dict = {}
 
-for batch_idx, batch in enumerate(test_loader):
-    predict_arch_dict = model(batch)
-    predicts = {}
-    for key in predict_arch_dict.keys():
-        predicts.update(predict_arch_dict[key])
-    final_loss, losses, nan_loss_list, task_loss = criterion.compute_losses(predicts, batch)
-    for key in losses.keys():
-        if losses[key] is None:
-            continue
-        if key not in crit_dict:
-            crit_dict[key] = 0
-        crit_dict[key] += losses[key].item()
-    evaluator.feed_all(predicts, batch, losses)
-    counter += 1
-    print("finished", counter)
+with torch.no_grad():
+    for batch_idx, batch in enumerate(test_loader):
+        predict_arch_dict = model(batch)
+        predicts = {}
+        for key in predict_arch_dict.keys():
+            predicts.update(predict_arch_dict[key])
+        final_loss, losses, nan_loss_list, task_loss = criterion.compute_losses(predicts, batch)
+        for key in losses.keys():
+            if losses[key] is None:
+                continue
+            if key not in crit_dict:
+                crit_dict[key] = 0
+            crit_dict[key] += losses[key].item()
+        evaluator.feed_all(predicts, batch, losses)
+        counter += 1
+        print("finished", counter)
 
 for key in crit_dict.keys():
     crit_dict[key] /= counter

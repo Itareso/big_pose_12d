@@ -59,7 +59,7 @@ class HybridBaseline(nn.Module):
         return self.weights
     
     def get_num_tasks(self):
-        return self.num_tasks
+        return self.num_tasks 
 
     def forward(self, inputs: Dict):
         batch_size, n_channel, height, width = inputs["image"].shape

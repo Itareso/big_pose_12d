@@ -57,7 +57,7 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: 'checkpoints/HybridBaseline0925.pth.tar'
+  PRETRAINED: ''
   BACKBONE:
     TYPE: ResNet34
     PRETRAINED: true
