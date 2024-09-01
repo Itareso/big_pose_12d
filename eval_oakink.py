@@ -45,9 +45,9 @@ model = torch.nn.DataParallel(model).to(arg.device)
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
 test_loader = torch.utils.data.DataLoader(test_data,
                                         batch_size=arg.batch_size,
-                                        shuffle=False,
+                                        shuffle=True,
                                         num_workers=int(arg.workers),
-                                        drop_last=True,
+                                        drop_last=False,
                                         collate_fn=ho_collate)
 
 loss_list = builder.build_criterion_loss_list(cfg["CRITERION"],
@@ -65,6 +65,10 @@ counter = 0
 
 crit_dict = {}
 
+evaluator.reset_all()
+
+model.eval()
+
 with torch.no_grad():
     for batch_idx, batch in enumerate(test_loader):
         predict_arch_dict = model(batch)
@@ -72,22 +76,22 @@ with torch.no_grad():
         for key in predict_arch_dict.keys():
             predicts.update(predict_arch_dict[key])
         final_loss, losses, nan_loss_list, task_loss = criterion.compute_losses(predicts, batch)
-        for key in losses.keys():
-            if losses[key] is None:
-                continue
-            if key not in crit_dict:
-                crit_dict[key] = 0
-            crit_dict[key] += losses[key].item()
+        # for key in losses.keys():
+        #     if losses[key] is None:
+        #         continue
+        #     if key not in crit_dict:
+        #         crit_dict[key] = 0
+        #     crit_dict[key] += losses[key].item()
         evaluator.feed_all(predicts, batch, losses)
         counter += 1
         print("finished", counter)
 
-for key in crit_dict.keys():
-    crit_dict[key] /= counter
+# for key in crit_dict.keys():
+#     crit_dict[key] /= counter
 
 eval_dict = evaluator.get_measures_all()
 
-eval_save_name = "./eval_1655.txt"
+eval_save_name = "./eval_1430.txt"
 
 
 with open(eval_save_name, "w") as f:

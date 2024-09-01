@@ -50,6 +50,7 @@ set_all_seeds(cfg["TRAIN"]["MANUAL_SEED"])
 model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRESET"])
 model = Arch(cfg, model_list=model_list)
 model = torch.nn.DataParallel(model).to(arg.device)
+model.eval()
 
 # train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])

@@ -7,6 +7,7 @@ image_records/
 checkpoints/
 thirdparty/
 common/
+eval_metrics/
 *.txt
 *.json
 

@@ -13,7 +13,7 @@ parser.add_argument("--cfg", help="experiment configure file name", type=str, de
 parser.add_argument("--exp_id", default="default", type=str, help="Experiment ID")
 
 parser.add_argument("--resume", help="resume training from exp", type=str, default=None)
-parser.add_argument("--workers", help="worker number from data loader", type=int, default=20)
+parser.add_argument("--workers", help="worker number from data loader", type=int, default=8)
 parser.add_argument("--batch_size",
                     help="batch size of exp, will replace bs in cfg file if is given",
                     type=int,

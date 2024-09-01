@@ -46,7 +46,7 @@ TRAIN:
   OPTIMIZER: 'adam'
   LR: 0.0001
   LR_FACTOR: 0.1
-  WEIGHT_DECAY: 0
+  WEIGHT_DECAY: 0.0
   LR_DECAY_STEP: 100
   LR_DECAY_GAMMA: 1.0
   MANUAL_SEED: 1
@@ -57,7 +57,7 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: ''
+  PRETRAINED: 'checkpoints/HybridBaseline1430.pth.tar'
   BACKBONE:
     TYPE: ResNet34
     PRETRAINED: true
@@ -81,15 +81,17 @@ ARCH:
     TYPE: MLP_O
     LAYERS_N: [512, 256, 128]
     OUT_CHANNEL: 12
+    USE_DROPOUT: False
   BOX_HEAD_POSE:
     TYPE: MLP_O
     LAYERS_N: [512, 256, 128]
     OUT_CHANNEL: 6
+    USE_DROPOUT: False
   PREVIOUS: []
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.001, 0.01, 0.001, 0.001]
+LAMBDAS: [0.5, 0.2, 0.001, 0.01, 0.001, 0.001, 0.001, 0.00001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
@@ -99,6 +101,8 @@ CRITERION:
   - TYPE: VelMagLoss
   - TYPE: AccCosLoss
   - TYPE: AccMagLoss
+  - TYPE: MSEOmegaLoss
+  - TYPE: MSEBetaLoss
 
 EVALUATOR:
   - TYPE: LossesMetric

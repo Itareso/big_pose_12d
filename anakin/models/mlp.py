@@ -18,7 +18,8 @@ class MLP_O(nn.Module):
         for (in_n, out_n) in zip(layers_n[:-1], layers_n[1:]):
             layers.append(nn.Linear(in_n, out_n))
             layers.append(nn.ReLU())
-            layers.append(nn.Dropout())
+            if cfg.get("USE_DROPOUT", False):
+                layers.append(nn.Dropout())
         layers.append(nn.Linear(layers_n[-1], out_channel))
         self.layers = nn.Sequential(*layers)
 
