@@ -6,8 +6,10 @@ eval_path1 = "/mnt/homes/zhushengjia/oakink_big_pose/exp/default_2024_0821_1430_
 
 eval_path2 = "/mnt/homes/zhushengjia/oakink_big_pose/exp/default_2024_0828_2043_52/evaluations/test_eval.txt"
 
+eval_path3 = "/mnt/homes/zhushengjia/oakink_big_pose/exp/default_2024_0904_1145_42/evaluations/test_eval.txt"
 
-eval_paths = [eval_path1, eval_path2]
+
+eval_paths = [eval_path1, eval_path2, eval_path3]
 
 metrics = ["Hand3DPCKMetric", "LossesMetric", "Mean3DEPE"]
 

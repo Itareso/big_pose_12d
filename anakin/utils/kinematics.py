@@ -60,3 +60,13 @@ def get_acc_beta_from_pose(predict_trans, predict_rot):
     beta = np.diff(omega, axis=0) * 30
 
     return acc, beta
+
+def get_acc_beta_from_vel(vel_list, omega_list):
+    vel_list = np.array(vel_list)
+    omega_list = np.array(omega_list)
+    acc = spline_derivative(vel_list, fps=30)
+
+    beta = np.diff(omega_list, axis=0) * 30
+    beta = np.append(beta, beta[-1].reshape(1, 3), axis=0)
+
+    return acc, beta

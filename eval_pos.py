@@ -13,7 +13,7 @@ from roma.mappings import rotmat_to_rotvec
 from scipy.spatial.transform import Rotation as R
 import json
 from collections import Counter
-from anakin.utils.kinematics import compute_velocity_and_omega, compute_pos_and_rot, get_acc_beta_from_pose
+from anakin.utils.kinematics import compute_velocity_and_omega, compute_pos_and_rot, get_acc_beta_from_pose, get_acc_beta_from_vel
 
 import cv2
 
@@ -64,6 +64,8 @@ target_trans = None
 target_rot = None
 original_trans = None
 original_rot = None
+vel_list = []
+omega_list = []
 acc_list = []
 beta_list = []
 
@@ -85,7 +87,7 @@ total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
 
 counter = 0
 
-mode = "frompose"
+mode = "fromvel"
 
 save_dict = {}
 
@@ -105,6 +107,8 @@ for batch_idx, batch in enumerate(test_loader):
     data_path = os.path.join(save_path, seq_id, timestamp, f"{cam_name}_{frame_id}_predict.npz")
     data = np.load(data_path)
 
+    vel = data["predict_vel"]
+    omega = data["predict_omega"]
     acc = data["predict_acc"]
     beta = data["predict_beta"]
     if mode == "gt":
@@ -145,6 +149,15 @@ for batch_idx, batch in enumerate(test_loader):
 
         if mode == "frompose":
             acc_list, beta_list = get_acc_beta_from_pose(predict_trans, predict_rot)
+        elif mode == "fromvel":
+            acc_list, beta_list = get_acc_beta_from_vel(vel_list, omega_list)
+        
+        acc_list_tmp = []
+        for _acc in acc_list:
+            acc_list_tmp.append(_acc.tolist())
+
+        with open(f"acc_1145_{mode}_save.txt", "a") as f:
+            f.write(f"{acc_list_tmp}\n")
         
         info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
 
@@ -169,6 +182,8 @@ for batch_idx, batch in enumerate(test_loader):
         predict_trans = [prev_trans, _trans]
         predict_rot = [prev_rot, _rot]
 
+        vel_list = [vel]
+        omega_list = [omega]
         acc_list = [acc]
         beta_list = [beta]
         last_seq_id = seq_id
@@ -185,6 +200,8 @@ for batch_idx, batch in enumerate(test_loader):
     last_cam_name = cam_name
 
 
+    vel_list.append(vel)
+    omega_list.append(omega)
     acc_list.append(acc)
     beta_list.append(beta)
 
@@ -205,6 +222,8 @@ for batch_idx, batch in enumerate(test_loader):
     obj_idx = batch["obj_idx"][0]
     obj_name = total_obj_dict[obj_idx]['name']
 
+info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
+
 try:
     trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
                                 gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
@@ -213,7 +232,7 @@ try:
 except:
     print(f"Error:{info_save}_{obj_name}")
 
-save_path = "./eval_pos_frompose_1654.json"
+save_path = f"./eval_pos_{mode}_1145.json"
 
 with open(save_path, "w") as f:
     json.dump(save_dict, f, indent=4)

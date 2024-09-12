@@ -8,8 +8,10 @@ checkpoints/
 thirdparty/
 common/
 eval_metrics/
+OakInkObjectsV2/
 *.txt
 *.json
+*.png
 
 
 

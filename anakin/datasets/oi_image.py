@@ -103,7 +103,7 @@ class OakInkImage(HOdata):
         self.cache_identifier_dict = {
             "data_split": self._data_split,
             "split_mode": self._mode_split,
-            "cache_version": 1
+            "cache_version": 3
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
@@ -131,6 +131,9 @@ class OakInkImage(HOdata):
             self.info_list = []
             counter = 0
             for info in self.info_list_raw:
+                if len(info[0].split("_")) == 4:
+                    counter += 1
+                    continue
                 image_dir = os.path.join(self._data_dir, "image", "stream_release_v2", info[0])
                 image_files = os.listdir(image_dir)
                 north_east_files = [f for f in image_files if "north_east_color" in f]

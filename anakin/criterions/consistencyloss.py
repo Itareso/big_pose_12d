@@ -7,7 +7,7 @@ import torch.nn.functional as torch_f
 from anakin.datasets.hoquery import Queries
 from anakin.utils.bop_toolkit.bop_misc import get_symmetry_transformations
 from anakin.utils.builder import LOSS
-from ..utils.transform import batch_ref_bone_len, compute_rotation_matrix_from_ortho6d
+from ..utils.transform import batch_ref_bone_len, compute_rotation_matrix_from_ortho6d, rotmat_to_quat
 from anakin.utils.logger import logger
 from anakin.utils.misc import CONST
 from scipy.spatial.transform import Rotation as R
@@ -38,18 +38,33 @@ def compute_velocity_and_omega(corners3d1, corners3d2, ortho6d1, ortho6d2, fps):
 
     return velocity, omega
 
-def get_vel_and_omega_from_preds(preds):
-    corner_3d_abs = preds["corners_3d_abs"]
-    prev_corner_3d_abs = preds["prev_corners_3d_abs"]
-    next_corner_3d_abs = preds["next_corners_3d_abs"]
-    box_rot_6d = preds["box_rot_6d"]
-    prev_box_rot_6d = preds["prev_box_rot_6d"]
-    next_box_rot_6d = preds["next_box_rot_6d"]
+def get_kin_mid_from_preds(preds):
+    corner_3d_abs_list = preds["corners_3d_abs_list"]
+    box_rot_6d_list = preds["box_rot_6d_list"]
+    corner_3d_abs_list = torch.stack(corner_3d_abs_list, dim=1)
+    box_rot_6d_list = torch.stack(box_rot_6d_list, dim=1)
+    
+    obj_center = corner_3d_abs_list.mean(2)
+    box_rot_flat = box_rot_6d_list.view(-1, 6)
+    rot_list_flat = compute_rotation_matrix_from_ortho6d(box_rot_flat)
+    rotvec_list_flat = rotmat_to_rotvec(rot_list_flat)
+    rotvec_list_flat = rotvec_list_flat.view(-1, 5, 3)
+    
     fps = 30
 
-    vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
-    vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
-    return vel1, omega1, vel2, omega2
+    vel_list = torch.diff(obj_center, dim=1) * fps
+    acc_list = torch.diff(vel_list, dim=1) * fps
+    omega_list = torch.diff(rotvec_list_flat, dim=1) * fps
+    beta_list = torch.diff(omega_list, dim=1) * fps
+
+    vel_mid = (vel_list[:, 1] + vel_list[:, 2]) / 2
+    acc_mid = acc_list[:, 1]
+
+    omega_mid = (omega_list[:, 1] + omega_list[:, 2]) / 2
+    beta_mid = beta_list[:, 1]
+
+    return vel_mid, omega_mid, acc_mid, beta_mid
+
 
 @LOSS.register_module
 class VelConsistencyLoss(TensorLoss):
@@ -61,11 +76,10 @@ class VelConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
-        vel_predict = preds["box_vel_12d"][:, 0:3]
-        vel = (vel1 + vel2) / 2
+        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        vel_predict = preds["box_kin_12d"][:, 0:3]
 
-        vel_loss = torch_f.mse_loss(vel, vel_predict).float()
+        vel_loss = torch_f.mse_loss(vel_mid, vel_predict).float()
         final_loss += vel_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -83,11 +97,10 @@ class OmegaConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
-        omega_predict = preds["box_vel_12d"][:, 3:6]
-        omega = (omega1 + omega2) / 2
+        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        omega_predict = preds["box_kin_12d"][:, 3:6]
 
-        omega_loss = torch_f.mse_loss(omega, omega_predict).float()
+        omega_loss = torch_f.mse_loss(omega_mid, omega_predict).float()
         final_loss += omega_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -106,11 +119,10 @@ class AccConsistencyLoss(TensorLoss):
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         fps = 30
-        vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
-        acc_predict = preds["box_vel_12d"][:, 6:9]
-        acc = (vel2 - vel1) * fps
+        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        acc_predict = preds["box_kin_12d"][:, 6:9]
 
-        acc_loss = torch_f.mse_loss(acc, acc_predict).float()
+        acc_loss = torch_f.mse_loss(acc_mid, acc_predict).float()
         final_loss += acc_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -129,11 +141,10 @@ class BetaConsistencyLoss(TensorLoss):
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         fps = 30
-        vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
-        beta_predict = preds["box_vel_12d"][:, 9:12]
-        beta = (omega2 - omega1) * fps
+        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        beta_predict = preds["box_kin_12d"][:, 9:12]
 
-        beta_loss = torch_f.mse_loss(beta, beta_predict).float()
+        beta_loss = torch_f.mse_loss(beta_mid, beta_predict).float()
         final_loss += beta_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
