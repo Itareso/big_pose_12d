@@ -57,7 +57,7 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: 'checkpoints/HybridBaseline2227.pth.tar'
+  PRETRAINED: ''
   BACKBONE:
     TYPE: ResNet34
     PRETRAINED: true
@@ -91,7 +91,7 @@ ARCH:
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.001, 0.01, 0.001, 0.005, 0.01, 0.001]
+LAMBDAS: [0.5, 0.2, 0.001, 0.01]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
@@ -99,10 +99,6 @@ CRITERION:
   - TYPE: HandOrdLoss
   - TYPE: VelCosLoss
   - TYPE: VelMagLoss
-  - TYPE: AccCosLoss
-  - TYPE: AccMagLoss
-  - TYPE: VelConsistencyLoss
-  - TYPE: AccConsistencyLoss
 
 EVALUATOR:
   - TYPE: LossesMetric
