@@ -30,23 +30,16 @@ class HybridBaseline(nn.Module):
         self.weights = torch.nn.Parameter(torch.ones(self.num_tasks).float())
         self.center_idx = cfg["DATA_PRESET"].get("CENTER_IDX", 9)
         self.inp_res = cfg["DATA_PRESET"]["IMAGE_SIZE"]
+        self.frame_num = cfg.get("FRAME_NUM", 3)
+        self.frame_mid = self.frame_num // 2
 
         self.backbone = build_backbone(cfg["BACKBONE"], default_args=cfg["DATA_PRESET"])
 
-        self.hybrid_head1 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])  # IntegralDeconvHead
-        self.hybrid_head2 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        self.hybrid_head3 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        self.hybrid_head4 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
-        self.hybrid_head5 = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])
+        self.hybrid_head = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])  # IntegralDeconvHead
 
         self.box_head_kin = build_model(cfg["BOX_HEAD_KIN"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
 
-        self.box_head_pose1 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        self.box_head_pose2 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        self.box_head_pose3 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        self.box_head_pose4 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        self.box_head_pose5 = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
-        #self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
+        self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
 
         self.init_weights(pretrained=cfg["PRETRAINED"])
         logger.info(f"{type(self).__name__} uses center_idx {self.center_idx}")
@@ -65,35 +58,24 @@ class HybridBaseline(nn.Module):
         batch_size, n_channel, height, width = inputs["image"].shape
         #128, 3, 224, 224
         image_list = inputs["image_list"]
-        #5, 128, 3, 224, 224
-        images = torch.cat(image_list, dim=1)
-        #128, 15, 224, 224
+        #fnum, 128, 3, 224, 224
 
         #features[res_layer4].shape=128, 512, 7, 7
-        features = self.backbone(image = images)
-        # for i in range(5):
-        #     features_list.append(self.backbone(image = images[i]))
+        features_list = []
+        for i in range(self.frame_num):
+            features_list.append(self.backbone(image = image_list[i]))
 
         pose_results_list = []
-        pose_results_list.append(self.hybrid_head1(feature = features["res_layer4"]))
-        pose_results_list.append(self.hybrid_head2(feature = features["res_layer4"]))
-        pose_results_list.append(self.hybrid_head3(feature = features["res_layer4"]))
-        pose_results_list.append(self.hybrid_head4(feature = features["res_layer4"]))
-        pose_results_list.append(self.hybrid_head5(feature = features["res_layer4"]))
-        # for i in range(5):
-        #     pose_results_list.append(self.hybrid_head(feature = features_list[i]["res_layer4"]))
+        for i in range(self.frame_num):
+            pose_results_list.append(self.hybrid_head(feature = features_list[i]["res_layer4"]))
         
         box_rot_6d_list = []
-        box_rot_6d_list.append(self.box_head_pose1(features["res_layer4_mean"]))
-        box_rot_6d_list.append(self.box_head_pose2(features["res_layer4_mean"]))
-        box_rot_6d_list.append(self.box_head_pose3(features["res_layer4_mean"]))
-        box_rot_6d_list.append(self.box_head_pose4(features["res_layer4_mean"]))
-        box_rot_6d_list.append(self.box_head_pose5(features["res_layer4_mean"]))
-        # for i in range(5):
-        #     box_rot_6d_list.append(self.box_head_pose(features_list[i]["res_layer4_mean"]))
+        for i in range(self.frame_num):
+            box_rot_6d_list.append(self.box_head_pose(features_list[i]["res_layer4_mean"]))
         
-        #mlp_input = torch.concat((features1["res_layer4_mean"], features2["res_layer4_mean"], features3["res_layer4_mean"]), dim=1)
-        kin_mlp_input = features["res_layer4_mean"]
+        kin_mlp_input = features_list[0]["res_layer4_mean"]
+        for i in range(1, self.frame_num):
+            kin_mlp_input = torch.cat((kin_mlp_input, features_list[i]["res_layer4_mean"]), dim=1)
         box_kin_12d = self.box_head_kin(kin_mlp_input)
 
         # prev_box_vel_12d = box_rot_12d_prev[:,6:18]
@@ -108,7 +90,7 @@ class HybridBaseline(nn.Module):
         # box_rot_quat[invalid_mask] = invalid_patch
 
         pose_3d_abs_list = []
-        for i in range(5):
+        for i in range(self.frame_num):
             _pose_3d_abs = batch_uvd2xyz(
                 uvd=pose_results_list[i]["kp3d"],
                 root_joint=inputs[Queries.ROOT_JOINT_LIST][:, i],
@@ -117,13 +99,13 @@ class HybridBaseline(nn.Module):
             ) 
             pose_3d_abs_list.append(_pose_3d_abs)
 
-        joints_3d_abs = pose_3d_abs_list[2][:, 0:21, :]  # TENSOR[B, 21, 3]
+        joints_3d_abs = pose_3d_abs_list[self.frame_mid][:, 0:21, :]  # TENSOR[B, 21, 3]
         boxroot_3d_abs_list = []
-        for i in range(5):
+        for i in range(self.frame_num):
             boxroot_3d_abs_list.append(pose_3d_abs_list[i][:, 21:22, :])
-        corners_can_3d = inputs[Queries.CORNERS_CAN].to(boxroot_3d_abs_list[2].device)  # TENSOR[B, 8, 3]
+        corners_can_3d = inputs[Queries.CORNERS_CAN].to(boxroot_3d_abs_list[self.frame_mid].device)  # TENSOR[B, 8, 3]
         box_rot_rotmat_list = []
-        for i in range(5):
+        for i in range(self.frame_num):
             box_rot_rotmat_list.append(compute_rotation_matrix_from_ortho6d(box_rot_6d_list[i]))
 
         # if torch.any(torch.isnan(box_rot_rotmat)):
@@ -131,18 +113,18 @@ class HybridBaseline(nn.Module):
         #     print(box_rot_rotmat)
         #     exit(-1)
         corners_3d_abs_list = []
-        for i in range(5):
+        for i in range(self.frame_num):
             corners_3d_abs_list.append(torch.matmul(box_rot_rotmat_list[i], corners_can_3d.permute(0, 2, 1)).permute(0, 2, 1) + boxroot_3d_abs_list[i])
 
         # TENSOR[B, 8, 3]
 
         # dispatch
         root_joint = joints_3d_abs[:, self.center_idx, :]  # (B, 3)
-        joints_confd = pose_results_list[2]["kp3d_confd"][:, :21]  # (B, 21)
+        joints_confd = pose_results_list[self.frame_mid]["kp3d_confd"][:, :21]  # (B, 21)
         # corners_confid = box_rot_quat["kp3d_confd"][:, 1:]  # (B, 8) # TODO: might need do something to this
 
-        cam_intr = inputs[Queries.CAM_INTR].to(corners_3d_abs_list[2].device)  # [B, 3, 3]
-        corners_2d = torch.matmul(cam_intr, corners_3d_abs_list[2].permute(0, 2, 1)).permute(0, 2, 1)  # [B, 8, 3], homogeneous
+        cam_intr = inputs[Queries.CAM_INTR].to(corners_3d_abs_list[self.frame_mid].device)  # [B, 3, 3]
+        corners_2d = torch.matmul(cam_intr, corners_3d_abs_list[self.frame_mid].permute(0, 2, 1)).permute(0, 2, 1)  # [B, 8, 3], homogeneous
         corners_2d = corners_2d[:, :, 0:2] / corners_2d[:, :, 2:3]  # [B, 8, 2], 2d
         corners_2d[:, :, 0] /= width
         corners_2d[:, :, 1] /= height
@@ -150,7 +132,7 @@ class HybridBaseline(nn.Module):
             (corners_2d, torch.zeros_like(corners_2d[:, :, 0:1])), dim=2
         )  # [B, 8, 3], where[:, :, 2] all zeros
         final_2d_uvd = torch.cat(
-            (pose_results_list[2]["kp3d"][:, 0:21, :], corners_2d_uvd, pose_results_list[2]["kp3d"][:, 21:22, :]), dim=1
+            (pose_results_list[self.frame_mid]["kp3d"][:, 0:21, :], corners_2d_uvd, pose_results_list[self.frame_mid]["kp3d"][:, 21:22, :]), dim=1
         )
         # diff = torch.norm(inputs[Queries.ROOT_JOINT] - root_joint, dim=1)
         # logger.debug(diff)
@@ -158,17 +140,17 @@ class HybridBaseline(nn.Module):
         return {
             # ↓ absolute value feed to criterion
             "joints_3d_abs": joints_3d_abs,
-            "corners_3d_abs": corners_3d_abs_list[2],
+            "corners_3d_abs": corners_3d_abs_list[self.frame_mid],
             "corners_3d_abs_list": corners_3d_abs_list,
-            "box_rot_6d": box_rot_6d_list[2],
+            "box_rot_6d": box_rot_6d_list[self.frame_mid],
             "box_rot_6d_list": box_rot_6d_list,
             "box_kin_12d": box_kin_12d,
             # ↓ root relative valus feed to evaluator
             "joints_3d": joints_3d_abs - root_joint.unsqueeze(1),
-            "corners_3d": corners_3d_abs_list[2] - root_joint.unsqueeze(1),
+            "corners_3d": corners_3d_abs_list[self.frame_mid] - root_joint.unsqueeze(1),
             "2d_uvd": final_2d_uvd,
-            "boxroot_3d_abs": boxroot_3d_abs_list[2],
-            "box_rot_rotmat": box_rot_rotmat_list[2],
+            "boxroot_3d_abs": boxroot_3d_abs_list[self.frame_mid],
+            "box_rot_rotmat": box_rot_rotmat_list[self.frame_mid],
         }
 
     def init_weights(self, pretrained=""):

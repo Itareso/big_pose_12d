@@ -94,6 +94,7 @@ class OakInkImage(HOdata):
         self._data_split = cfg["DATA_SPLIT"]
         self._mode_split = cfg["SPLIT_MODE"]
         self._enable_handover = cfg["ENABLE_HANDOVER"]
+        self.frame_num = cfg.get("FRAME_NUM", 3)
         if self._enable_handover:
             assert self._data_split == "all", "handover need to be enabled in all split"
 
@@ -103,6 +104,7 @@ class OakInkImage(HOdata):
         self.cache_identifier_dict = {
             "data_split": self._data_split,
             "split_mode": self._mode_split,
+            "frame_num": self.frame_num,
             "cache_version": 3
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
@@ -130,6 +132,7 @@ class OakInkImage(HOdata):
             logger.info("filtering samples")
             self.info_list = []
             counter = 0
+            offset = (self.frame_num - 1) // 2
             for info in self.info_list_raw:
                 if len(info[0].split("_")) == 4:
                     counter += 1
@@ -152,13 +155,13 @@ class OakInkImage(HOdata):
                 north_west_max = int(north_west_files[-1].split("_")[-1].split(".")[0])
                 south_west_min = int(south_west_files[0].split("_")[-1].split(".")[0])
                 south_west_max = int(south_west_files[-1].split("_")[-1].split(".")[0])
-                if info[3] == 0 and (info[2] <= north_east_min+1 or info[2] >= north_east_max-1):
+                if info[3] == 0 and (info[2] < north_east_min+offset or info[2] > north_east_max-offset):
                     counter += 1
-                elif info[3] == 1 and (info[2] <= south_east_min+1 or info[2] >= south_east_max-1):
+                elif info[3] == 1 and (info[2] < south_east_min+offset or info[2] > south_east_max-offset):
                     counter += 1
-                elif info[3] == 2 and (info[2] <= north_west_min+1 or info[2] >= north_west_max-1):
+                elif info[3] == 2 and (info[2] < north_west_min+offset or info[2] > north_west_max-offset):
                     counter += 1
-                elif info[3] == 3 and (info[2] <= south_west_min+1 or info[2] >= south_west_max-1):
+                elif info[3] == 3 and (info[2] < south_west_min+offset or info[2] > south_west_max-offset):
                     counter += 1
                 else:
                     self.info_list.append(info)
@@ -496,6 +499,9 @@ class OakInkImage(HOdata):
         data = np.load(save_path)
         beta = data["angacc"]
         return beta.astype(np.float32)
+    
+    def get_frame_num(self):
+        return self.frame_num
     
     def get_grasp_idx(self, idx):
         return 0

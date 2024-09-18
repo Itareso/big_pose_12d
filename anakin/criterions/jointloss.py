@@ -49,7 +49,8 @@ class JointsLoss(TensorLoss):
             pred_corners_3d_abs_list = preds["corners_3d_abs_list"]
             corners_3d_list = targs[Queries.CORNERS_3D_LIST]
             root_joint_list = targs[Queries.ROOT_JOINT_LIST]
-            for i in range(5):
+            frame_num = corners_3d_list[0].shape[0]
+            for i in range(frame_num):
                 corners_3d_abs = corners_3d_list[:, i] + root_joint_list[:, i].unsqueeze(1)  # TENSOR (B, NCORNERS, 3)
                 pred_corners_3d_abs = pred_corners_3d_abs_list[i]
                 
@@ -60,7 +61,7 @@ class JointsLoss(TensorLoss):
                 corners_3d_abs = torch.einsum("bij,bi->bij", corners_3d_abs, corners_vis_mask)
 
                 corners_3d_loss += torch_f.mse_loss(pred_corners_3d_abs, corners_3d_abs.to(final_loss.device))
-            final_loss += self.lambda_corners_3d * corners_3d_loss / 5
+            final_loss += self.lambda_corners_3d * corners_3d_loss / frame_num
         else:
             corners_3d_loss = None
         losses["corners_3d_loss"] = corners_3d_loss

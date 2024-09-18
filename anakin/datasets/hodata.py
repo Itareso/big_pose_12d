@@ -319,6 +319,8 @@ class HOdata(ABC):
         sample[SynthQueries.OBJ_ID] = -1
         sample[SynthQueries.PERSP_ID] = -1
         sample[SynthQueries.GRASP_ID] = -1
+        sample[Queries.FRAME_NUM] = self.frame_num
+        frame_list = [i - (self.frame_num - 1) // 2 for i in range(self.frame_num)]
 
         gt_hand_side = self.get_sides(idx)
         flip = True if gt_hand_side != self.sides else False
@@ -328,21 +330,21 @@ class HOdata(ABC):
 
         img = self.get_image(idx)
         img_list = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             img_list.append(self.get_image(idx, seq = i))
         cam_intr = self.get_cam_intr(idx)
         joints_3d = self.get_joints_3d(idx)
         joints_3d_list = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             joints_3d_list.append(self.get_joints_3d(idx, seq = i))
         joints_2d = self.get_joints_2d(idx)
         corners_3d = self.get_corners_3d(idx)
         corners_3d_list = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             corners_3d_list.append(self.get_corners_3d(idx, seq = i))
         corners_2d = self.get_corners_2d(idx)
         corners_2d_list = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             corners_2d_list.append(self.get_corners_2d(idx, seq = i))
         corners_can = self.get_corners_can(idx)
 
@@ -450,7 +452,7 @@ class HOdata(ABC):
         base_trasnf = self.get_obj_transf(idx)
         sample[Queries.OBJ_TRANSF] = base_transf2obj_transf(base_trasnf, rot_mat)
         sample[Queries.OBJ_TRANSF_LIST] = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             _obj_transf = self.get_obj_transf(idx, i)
             sample[Queries.OBJ_TRANSF_LIST].append(base_transf2obj_transf(_obj_transf, rot_mat))
         sample[Queries.OBJ_TRANSF_LIST] = np.array(sample[Queries.OBJ_TRANSF_LIST])
@@ -460,7 +462,7 @@ class HOdata(ABC):
         corners_vis = self.get_corners_vis(idx)
         get_corners_vis(corners_vis, sample, self.data_split, corners_2d, self.image_size, Queries.CORNERS_VIS)
         corners_vis_list = []
-        for i in [-2, -1, 0, 1, 2]:
+        for i in frame_list:
             _corners_vis = self.get_corners_vis(idx, i)
             if self.data_split not in ["train", "trainval"]:
                 _corners_vis = np.full(CONST.NUM_CORNERS, 1.0, dtype=np.float32)  # all 1

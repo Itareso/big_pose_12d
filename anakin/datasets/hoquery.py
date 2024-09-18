@@ -65,6 +65,8 @@ class Queries(metaclass=ImmutableClass):
 
     GRASP_IDX = "grasp_idx"
 
+    FRAME_NUM = "frame_num"
+
 
 class SynthQueries(metaclass=ImmutableClass):
     IS_SYNTH = "is_synth"

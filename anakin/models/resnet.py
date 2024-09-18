@@ -152,7 +152,7 @@ class ResNet(nn.Module):
         else:
             self.interm_feat = interm_feat
             #self.conv1 originally 3,64
-        self.conv1 = nn.Conv2d(15, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = self.bn_layer(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -255,7 +255,7 @@ class ResNet34(ResNet):
     def __init__(self, **cfg):
         super().__init__(BasicBlock, [3, 4, 6, 3], **cfg)
         if cfg["PRETRAINED"]:
-            self.load_pretrained34()
+            self.load_pretrained()
 
 
 @BACKBONE.register_module
