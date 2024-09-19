@@ -62,6 +62,8 @@ model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRE
 model = Arch(cfg, model_list=model_list)
 model = torch.nn.DataParallel(model).to(arg.device)
 
+frame_num = cfg["ARCH"]["FRAME_NUM"]
+
 # train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
 test_loader = torch.utils.data.DataLoader(test_data,
@@ -109,11 +111,11 @@ for batch_idx, batch in enumerate(test_loader):
     predict_beta = predict_6d[:, 9:12]
 
     corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
-    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][3]
+    prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
     box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
-    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][3]
+    prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
+    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
     fps = 30
     vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
     vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)

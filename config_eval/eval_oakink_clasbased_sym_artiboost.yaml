@@ -94,14 +94,16 @@ ARCH:
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.001, 0.01]
+LAMBDAS: [0.5, 0.2, 0.001, 0.001, 0.01, 0.001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
     LAMBDA_CORNERS_3D: 1.0
   - TYPE: HandOrdLoss
   - TYPE: MSEVelLoss
+  - TYPE: VelCosLoss
   - TYPE: MSEAccLoss
+  - TYPE: AccCosLoss
 
 EVALUATOR:
   - TYPE: LossesMetric

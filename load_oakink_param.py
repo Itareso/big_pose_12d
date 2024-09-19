@@ -98,17 +98,6 @@ for batch_idx, batch in enumerate(test_loader):
     predict_acc = predict_6d[:, 6:9]
     predict_beta = predict_6d[:, 9:12]
 
-    corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
-    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][3]
-    box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
-    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][3]
-    fps = 30
-    vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
-    vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
-    acc = (vel2 - vel1) * fps
-    beta = (omega2 - omega1) * fps
     # if predict_pos2vel is None:
     #     predict_pos2vel = vel1
     #     predict_pos2omega = omega1

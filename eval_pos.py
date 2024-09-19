@@ -37,6 +37,9 @@ set_all_seeds(cfg["TRAIN"]["MANUAL_SEED"])
 model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRESET"])
 model = Arch(cfg, model_list=model_list)
 model = torch.nn.DataParallel(model).to(arg.device)
+model.eval()
+
+frame_num = cfg["ARCH"]["FRAME_NUM"]
 
 # train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
@@ -87,7 +90,7 @@ total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
 
 counter = 0
 
-mode = "fromvel"
+mode = "predict"
 
 save_dict = {}
 
@@ -120,14 +123,14 @@ for batch_idx, batch in enumerate(test_loader):
     _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
 
     if last_seq_id is None:
-        original_obj_transf = batch['obj_transf_list'][:,1]
+        original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
         original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
         original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
         gt_trans = [original_trans]
         gt_rot = [original_rot]
 
-        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
-        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
+        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
         prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
         predict_trans = [prev_trans]
         predict_rot = [prev_rot]
@@ -170,14 +173,14 @@ for batch_idx, batch in enumerate(test_loader):
         except:
             print(f"Error:{info_save}_{obj_name}")
 
-        original_obj_transf = batch['obj_transf_list'][:,1]
+        original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
         original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
         original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
         gt_trans = [original_trans, cur_trans]
         gt_rot = [original_rot, cur_rot]
 
-        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][1]
-        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][1]
+        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
         prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
         predict_trans = [prev_trans, _trans]
         predict_rot = [prev_rot, _rot]
@@ -208,12 +211,12 @@ for batch_idx, batch in enumerate(test_loader):
     predict_trans.append(_trans)
     predict_rot.append(_rot)
 
-    target_obj_transf = batch['obj_transf_list'][:,3]
+    target_obj_transf = batch['obj_transf_list'][:,frame_num//2+1]
     target_trans = target_obj_transf[0, :3, 3].detach().cpu().numpy()
     target_rot = target_obj_transf[0, :3, 0:3].detach().cpu().numpy()
 
-    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][3]
-    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][3]
+    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
+    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
     next_trans, next_rot = compute_pos_and_rot(next_corner_3d_abs, next_box_rot_6d)
 
     gt_trans.append(cur_trans)
@@ -232,7 +235,7 @@ try:
 except:
     print(f"Error:{info_save}_{obj_name}")
 
-save_path = f"./eval_pos_{mode}_1145.json"
+save_path = f"./eval_pos_{mode}_1841.json"
 
 with open(save_path, "w") as f:
     json.dump(save_dict, f, indent=4)
