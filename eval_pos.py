@@ -90,7 +90,7 @@ total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
 
 counter = 0
 
-mode = "predict"
+mode = "fromvel"
 
 save_dict = {}
 
@@ -159,7 +159,7 @@ for batch_idx, batch in enumerate(test_loader):
         for _acc in acc_list:
             acc_list_tmp.append(_acc.tolist())
 
-        with open(f"acc_1145_{mode}_save.txt", "a") as f:
+        with open(f"eval_pos/acc_1841_{mode}_save.txt", "a") as f:
             f.write(f"{acc_list_tmp}\n")
         
         info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
@@ -235,7 +235,7 @@ try:
 except:
     print(f"Error:{info_save}_{obj_name}")
 
-save_path = f"./eval_pos_{mode}_1841.json"
+save_path = f"eval_pos/eval_pos_{mode}_1841.json"
 
 with open(save_path, "w") as f:
     json.dump(save_dict, f, indent=4)

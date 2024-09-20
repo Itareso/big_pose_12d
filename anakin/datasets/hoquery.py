@@ -58,6 +58,11 @@ class Queries(metaclass=ImmutableClass):
     TARGET_ACC = "target_acc"
     TARGET_BETA = "target_beta"
 
+    TARGET_NEXT_VEL = "target_next_vel"
+    TARGET_NEXT_OMEGA = "target_next_omega"
+    TARGET_NEXT_ACC = "target_next_acc"
+    TARGET_NEXT_BETA = "target_next_beta"
+
     LABEL_PATH = "label_path"
     INFO_STR = "info_str"
 

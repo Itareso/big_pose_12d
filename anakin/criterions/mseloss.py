@@ -20,6 +20,7 @@ class MSEVelLoss(TensorLoss):
     def __init__(self, **cfg):
         super(MSEVelLoss, self).__init__()
 
+        self.use_last = cfg.get("USE_LAST", False)
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -27,7 +28,10 @@ class MSEVelLoss(TensorLoss):
         # ============== OBJ VEL&OMEGA MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         box_vel_12d = preds["box_kin_12d"]
         vel_predict = box_vel_12d[:, :3]
-        vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
+        if not self.use_last:
+            vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
+        else:
+            vel_real = targs[Queries.TARGET_NEXT_VEL].to(final_loss.device)
         loss_vel = torch_f.mse_loss(vel_predict, vel_real).float()
         final_loss += loss_vel
 
@@ -41,6 +45,7 @@ class MSEOmegaLoss(TensorLoss):
     def __init__(self, **cfg):
         super(MSEOmegaLoss, self).__init__()
 
+        self.use_last = cfg.get("USE_LAST", False)
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -48,7 +53,10 @@ class MSEOmegaLoss(TensorLoss):
         # ============== OBJ VEL&OMEGA MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         box_vel_12d = preds["box_kin_12d"]
         omega_predict = box_vel_12d[:, 3:6]
-        omega_real = targs[Queries.TARGET_OMEGA].to(final_loss.device)
+        if not self.use_last:
+            omega_real = targs[Queries.TARGET_OMEGA].to(final_loss.device)
+        else:
+            omega_real = targs[Queries.TARGET_NEXT_OMEGA].to(final_loss.device)
         loss_omega = torch_f.mse_loss(omega_predict, omega_real).float()
         final_loss += loss_omega
 
@@ -62,6 +70,7 @@ class MSEAccLoss(TensorLoss):
     def __init__(self, **cfg):
         super(MSEAccLoss, self).__init__()
 
+        self.use_last = cfg.get("USE_LAST", False)
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -69,7 +78,10 @@ class MSEAccLoss(TensorLoss):
         # ============== OBJ ACC&BETA MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         box_vel_12d = preds["box_kin_12d"]
         acc_predict = box_vel_12d[:, 6:9]
-        acc_real = targs[Queries.TARGET_ACC].to(final_loss.device)
+        if not self.use_last:
+            acc_real = targs[Queries.TARGET_ACC].to(final_loss.device)
+        else:
+            acc_real = targs[Queries.TARGET_NEXT_ACC].to(final_loss.device)
         loss_acc = torch_f.mse_loss(acc_predict, acc_real).float()
         final_loss += loss_acc
 
@@ -83,6 +95,7 @@ class MSEBetaLoss(TensorLoss):
     def __init__(self, **cfg):
         super(MSEBetaLoss, self).__init__()
 
+        self.use_last = cfg.get("USE_LAST", False)
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -90,7 +103,10 @@ class MSEBetaLoss(TensorLoss):
         # ============== OBJ ACC&BETA MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         box_vel_12d = preds["box_kin_12d"]
         beta_predict = box_vel_12d[:, 9:12]
-        beta_real = targs[Queries.TARGET_BETA].to(final_loss.device)
+        if not self.use_last:
+            beta_real = targs[Queries.TARGET_BETA].to(final_loss.device)
+        else:
+            beta_real = targs[Queries.TARGET_NEXT_BETA].to(final_loss.device)
         loss_beta = torch_f.mse_loss(beta_predict, beta_real).float()
         final_loss += loss_beta
 

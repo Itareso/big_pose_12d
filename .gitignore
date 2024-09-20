@@ -4,6 +4,8 @@ exp/
 runs/
 images/
 image_records/
+eval_oakink/
+eval_pos/
 checkpoints/
 thirdparty/
 common/

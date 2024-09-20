@@ -66,6 +66,7 @@ frame_num = cfg["ARCH"]["FRAME_NUM"]
 
 # train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
+#train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_loader = torch.utils.data.DataLoader(test_data,
                                         batch_size=arg.batch_size,
                                         shuffle=False,

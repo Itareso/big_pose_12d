@@ -517,6 +517,10 @@ class HOdata(ABC):
         
         if self.name == "OakInkImage":
             sample[Queries.INFO_STR] = self.get_info_str(idx)
+            sample[Queries.TARGET_NEXT_VEL] = self.get_real_acc(idx, 1)
+            sample[Queries.TARGET_NEXT_OMEGA] = self.get_real_beta(idx, 1)
+            sample[Queries.TARGET_NEXT_ACC] = self.get_real_acc(idx, 1)
+            sample[Queries.TARGET_NEXT_BETA] = self.get_real_beta(idx, 1)
 
         return sample
 

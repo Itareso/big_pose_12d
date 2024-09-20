@@ -105,7 +105,7 @@ class OakInkImage(HOdata):
             "data_split": self._data_split,
             "split_mode": self._mode_split,
             "frame_num": self.frame_num,
-            "cache_version": 3
+            "cache_version": 4
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
@@ -468,33 +468,33 @@ class OakInkImage(HOdata):
             "verts": verts_3d,
         }
 
-    def get_real_vel(self, idx):
+    def get_real_vel(self, idx, seq = 0):
         info = self.info_list[idx]
-        offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"
+        offset = f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.npz"
         save_path = os.path.join(savedir, info[0], offset)
         data = np.load(save_path)
         vel = data["vel"]
         return vel.astype(np.float32)
 
-    def get_real_acc(self, idx):
+    def get_real_acc(self, idx, seq = 0):
         info = self.info_list[idx]
-        offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"
+        offset = f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.npz"
         save_path = os.path.join(savedir, info[0], offset)
         data = np.load(save_path)
         acc = data["acc"]
         return acc.astype(np.float32)
 
-    def get_real_omega(self, idx):
+    def get_real_omega(self, idx, seq = 0):
         info = self.info_list[idx]
-        offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"
+        offset = f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.npz"
         save_path = os.path.join(savedir, info[0], offset)
         data = np.load(save_path)
         omega = data["angvel"]
         return omega.astype(np.float32)
 
-    def get_real_beta(self, idx):
+    def get_real_beta(self, idx, seq = 0):
         info = self.info_list[idx]
-        offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"
+        offset = f"{self.framedata_color_name[info[3]]}_{info[2] + seq}.npz"
         save_path = os.path.join(savedir, info[0], offset)
         data = np.load(save_path)
         beta = data["angacc"]
