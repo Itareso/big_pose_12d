@@ -65,6 +65,19 @@ def get_kin_mid_from_preds(preds):
 
     return vel_mid, omega_mid, acc_mid, beta_mid
 
+def get_vel_and_omega_from_preds(preds):
+    corner_3d_abs = preds["corners_3d_abs"]
+    prev_corner_3d_abs = preds["corners_3d_abs_list"][0]
+    next_corner_3d_abs = preds["corners_3d_abs_list"][2]
+    box_rot_6d = preds["box_rot_6d"]
+    prev_box_rot_6d = preds["box_rot_6d_list"][0]
+    next_box_rot_6d = preds["box_rot_6d_list"][2]
+    fps = 30
+
+    vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
+    vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
+    return vel1, omega1, vel2, omega2
+
 
 @LOSS.register_module
 class VelConsistencyLoss(TensorLoss):
@@ -76,7 +89,12 @@ class VelConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+        if frame_num == 5:
+            vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        elif frame_num == 3:
+            vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
+            vel_mid = (vel1 + vel2) / 2
         vel_predict = preds["box_kin_12d"][:, 0:3]
 
         vel_loss = torch_f.mse_loss(vel_mid, vel_predict).float()
@@ -97,7 +115,12 @@ class OmegaConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+        if frame_num == 5:
+            vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        elif frame_num == 3:
+            vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
+            omega_mid = (omega1 + omega2) / 2
         omega_predict = preds["box_kin_12d"][:, 3:6]
 
         omega_loss = torch_f.mse_loss(omega_mid, omega_predict).float()
@@ -118,8 +141,12 @@ class AccConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        fps = 30
-        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+        if frame_num == 5:
+            vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        elif frame_num == 3:
+            vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
+            acc_mid = (vel2 - vel1) * 30
         acc_predict = preds["box_kin_12d"][:, 6:9]
 
         acc_loss = torch_f.mse_loss(acc_mid, acc_predict).float()
@@ -140,8 +167,12 @@ class BetaConsistencyLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         final_loss, losses = super().__call__(preds, targs, **kwargs)  # TENSOR(0.), {}
         # ============== Consistency LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        fps = 30
-        vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+        if frame_num == 5:
+            vel_mid, omega_mid, acc_mid, beta_mid = get_kin_mid_from_preds(preds)
+        elif frame_num == 3:
+            vel1, omega1, vel2, omega2 = get_vel_and_omega_from_preds(preds)
+            beta_mid = (omega2 - omega1) * 30
         beta_predict = preds["box_kin_12d"][:, 9:12]
 
         beta_loss = torch_f.mse_loss(beta_mid, beta_predict).float()
