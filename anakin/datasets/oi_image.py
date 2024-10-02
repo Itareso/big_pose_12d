@@ -105,7 +105,7 @@ class OakInkImage(HOdata):
             "data_split": self._data_split,
             "split_mode": self._mode_split,
             "frame_num": self.frame_num,
-            "cache_version": 4
+            "cache_version": 8
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()

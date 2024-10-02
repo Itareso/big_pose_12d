@@ -157,10 +157,13 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
         mag1.append(np.linalg.norm(rotvec1))
         mag2.append(np.linalg.norm(rotvec2))
     
-    trans_loss = np.mean((target_trans - final_trans) ** 2)
-    rot_loss = 1 - cos_sim[-1]
-
-    return trans_loss, rot_loss
+    rot_loss = 0
+    #trans_loss = np.mean((target_trans - final_trans) ** 2)
+    trans_loss = np.mean(np.linalg.norm(predict_trans - gt_trans, axis=1))
+    for i in range(len(cos_sim)):
+        rot_loss += 1 - cos_sim[i]
+    rot_loss /= len(cos_sim)
+    #print(rot_loss)
 
     # _axis = ["x", "y", "z"]
 
@@ -168,16 +171,19 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
     #     plt.plot(gt_trans[:, i], label=f"gt_pos_{axis}")
     #     plt.plot(predict_trans[:, i], label=f"predict_pos_{axis}")
     #     plt.legend()
-    #     plt.savefig(f"sim_images2/{seq_id}_{timestamp}_{cam_name}_{mode}_pos_{axis}.png")
+    #     plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_pos_{axis}.png")
     #     plt.cla()
     
-    # plt.plot(cos_loss, label="cos_loss")
+    # plt.plot(cos_sim, label="cos_sim")
     # plt.legend()
-    # plt.savefig(f"sim_images2/{seq_id}_{timestamp}_{cam_name}_{mode}_cos_loss.png")
+    # plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_cos_sim.png")
     # plt.cla()
 
     # plt.plot(mag1, label="gt_mag")
     # plt.plot(mag2, label="predict_mag")
     # plt.legend()
-    # plt.savefig(f"sim_images2/{seq_id}_{timestamp}_{cam_name}_{mode}_mag.png")
+    # plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_mag.png")
     # plt.cla()
+    # print(trans_loss)
+
+    return trans_loss, rot_loss

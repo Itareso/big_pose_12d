@@ -58,10 +58,10 @@ def get_kin_mid_from_preds(preds):
     beta_list = torch.diff(omega_list, dim=1) * fps
 
     vel_mid = (vel_list[:, 1] + vel_list[:, 2]) / 2
-    acc_mid = acc_list[:, 1]
+    acc_mid = acc_list[:, 1] * 0.7 + acc_list[:, 2] * 0.15 + acc_list[:, 0] * 0.15
 
     omega_mid = (omega_list[:, 1] + omega_list[:, 2]) / 2
-    beta_mid = beta_list[:, 1]
+    beta_mid = beta_list[:, 1] * 0.7 + beta_list[:, 2] * 0.15 + beta_list[:, 0] * 0.15
 
     return vel_mid, omega_mid, acc_mid, beta_mid
 

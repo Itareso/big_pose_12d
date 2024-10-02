@@ -65,9 +65,13 @@ counter = 0
 
 crit_dict = {}
 
+date = sys.argv[1]
+
 evaluator.reset_all()
 
 model.eval()
+
+print(f"start evaluating {date}")
 
 with torch.no_grad():
     for batch_idx, batch in enumerate(test_loader):
@@ -84,14 +88,14 @@ with torch.no_grad():
         #     crit_dict[key] += losses[key].item()
         evaluator.feed_all(predicts, batch, losses)
         counter += 1
-        print("finished", counter)
+        #print("finished", counter)
 
 # for key in crit_dict.keys():
 #     crit_dict[key] /= counter
 
 eval_dict = evaluator.get_measures_all()
 
-eval_save_name = "eval_oakink/eval_0859.txt"
+eval_save_name = f"eval_oakink/eval_{date}.txt"
 
 
 with open(eval_save_name, "w") as f:

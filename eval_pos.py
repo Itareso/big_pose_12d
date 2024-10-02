@@ -41,7 +41,7 @@ model.eval()
 
 frame_num = cfg["ARCH"]["FRAME_NUM"]
 
-# train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
+#train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
 test_loader = torch.utils.data.DataLoader(test_data,
                                         batch_size=1,
@@ -90,140 +90,167 @@ total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
 
 counter = 0
 
-mode = "fromvel"
+mode = sys.argv[1]
+
+date = sys.argv[2]
+
+print(f"start evaluating pose loss in {date} using data from {mode}")
+
+record_acc = True
+
+use_last = False
+
+with open(f"eval_pos/acc_{date}_{mode}_save.txt", "w") as f:
+    f.write("")
 
 save_dict = {}
 
-for batch_idx, batch in enumerate(test_loader):
-    info_str = batch["info_str"][0]
-    seq_id = info_str.split("__")[0]
-    timestamp = info_str.split("__")[1]
-    frame_id = info_str.split("__")[3]
-    cam_name = info_str.split("__")[4]
+with torch.no_grad():
 
-    cur_obj_transf = batch['obj_transf']
-    cur_trans = cur_obj_transf[0, :3, 3].detach().cpu().numpy()
-    cur_rot = cur_obj_transf[0, :3, 0:3].detach().cpu().numpy()
+    for batch_idx, batch in enumerate(test_loader):
+        info_str = batch["info_str"][0]
+        seq_id = info_str.split("__")[0]
+        timestamp = info_str.split("__")[1]
+        frame_id = info_str.split("__")[3]
+        cam_name = info_str.split("__")[4]
 
-    predict = model(batch)
+        cur_obj_transf = batch['obj_transf']
+        cur_trans = cur_obj_transf[0, :3, 3].detach().cpu().numpy()
+        cur_rot = cur_obj_transf[0, :3, 0:3].detach().cpu().numpy()
 
-    data_path = os.path.join(save_path, seq_id, timestamp, f"{cam_name}_{frame_id}_predict.npz")
-    data = np.load(data_path)
+        predict = model(batch)
 
-    vel = data["predict_vel"]
-    omega = data["predict_omega"]
-    acc = data["predict_acc"]
-    beta = data["predict_beta"]
-    if mode == "gt":
-        acc = batch["target_acc"][0]
-        beta = batch["target_beta"][0]
+        data_path = os.path.join(save_path, seq_id, timestamp, f"{cam_name}_{frame_id}_predict.npz")
+        data = np.load(data_path)
 
-    corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
+        vel = data["predict_vel"]
+        omega = data["predict_omega"]
+        acc = data["predict_acc"]
+        beta = data["predict_beta"]
+        if mode == "gt" or mode == "gtfromvel":
+            vel = batch["target_vel"][0].detach().cpu().numpy()
+            omega = batch["target_omega"][0].detach().cpu().numpy()
+            acc = batch["target_acc"][0]
+            beta = batch["target_beta"][0]
 
-    if last_seq_id is None:
-        original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
-        original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
-        original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
-        gt_trans = [original_trans]
-        gt_rot = [original_rot]
+        corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
+        box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
+        _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
 
-        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
-        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
-        prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
-        predict_trans = [prev_trans]
-        predict_rot = [prev_rot]
+        if last_seq_id is None:
+            original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
+            original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
+            original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
+            gt_trans = [original_trans]
+            gt_rot = [original_rot]
 
-    if last_seq_id is not None and (last_seq_id != seq_id or last_timestamp != timestamp or last_cam_name != cam_name):
-        print(last_seq_id, seq_id)
-        print(len(acc_list))
-        gt_trans.append(target_trans)
-        gt_rot.append(target_rot)
-        gt_trans = np.array(gt_trans)
-        gt_rot = np.array(gt_rot)
+            prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+            prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
+            prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
+            predict_trans = [prev_trans]
+            predict_rot = [prev_rot]
 
-        predict_trans.append(next_trans)
-        predict_rot.append(next_rot)
-        predict_trans = np.array(predict_trans)
-        predict_rot = np.array(predict_rot)
-        predict_trans = predict_trans.squeeze(axis=1)
-        predict_rot = predict_rot.squeeze(axis=1)
+        if last_seq_id is not None and (last_seq_id != seq_id or last_timestamp != timestamp or last_cam_name != cam_name):
+            # print(last_seq_id, seq_id)
+            # print(len(acc_list))
+            gt_trans.append(target_trans)
+            gt_rot.append(target_rot)
+            gt_trans = np.array(gt_trans)
+            gt_rot = np.array(gt_rot)
 
-        if mode == "frompose":
-            acc_list, beta_list = get_acc_beta_from_pose(predict_trans, predict_rot)
-        elif mode == "fromvel":
-            acc_list, beta_list = get_acc_beta_from_vel(vel_list, omega_list)
-        
-        acc_list_tmp = []
-        for _acc in acc_list:
-            acc_list_tmp.append(_acc.tolist())
+            predict_trans.append(next_trans)
+            predict_rot.append(next_rot)
+            predict_trans = np.array(predict_trans)
+            predict_rot = np.array(predict_rot)
+            predict_trans = predict_trans.squeeze(axis=1)
+            predict_rot = predict_rot.squeeze(axis=1)
 
-        with open(f"eval_pos/acc_1841_{mode}_save.txt", "a") as f:
-            f.write(f"{acc_list_tmp}\n")
-        
-        info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
-
-        try:
-
-            trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                            gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
+            if mode == "frompose":
+                acc_list, beta_list = get_acc_beta_from_pose(predict_trans, predict_rot)
+            elif mode == "fromvel" or mode == "gtfromvel":
+                #print(vel_list, omega_list)
+                acc_list, beta_list = get_acc_beta_from_vel(vel_list, omega_list)
+            elif mode == "zeros":
+                acc_list = np.zeros((len(acc_list), 3))
+                beta_list = np.zeros((len(beta_list), 3))
             
-            save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
-        except:
-            print(f"Error:{info_save}_{obj_name}")
+            if use_last:
+                acc_list = acc_list[:-1]
+                beta_list = beta_list[:-1]
+                gt_trans = gt_trans[1:]
+                gt_rot = gt_rot[1:]
+            
+            acc_list_tmp = []
+            for _acc in acc_list:
+                acc_list_tmp.append(_acc.tolist())
 
-        original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
-        original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
-        original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
-        gt_trans = [original_trans, cur_trans]
-        gt_rot = [original_rot, cur_rot]
+            if record_acc:
 
-        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
-        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
-        prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
-        predict_trans = [prev_trans, _trans]
-        predict_rot = [prev_rot, _rot]
+                with open(f"eval_pos/acc_{date}_{mode}_save.txt", "a") as f:
+                    f.write(f"{acc_list_tmp}\n")
+            
+            info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
 
-        vel_list = [vel]
-        omega_list = [omega]
-        acc_list = [acc]
-        beta_list = [beta]
+            try:
+
+                trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
+                                gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
+                
+                save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
+            except:
+                print(f"Error:{info_save}_{obj_name}")
+
+            original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
+            original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
+            original_rot = original_obj_transf[0, :3, 0:3].detach().cpu().numpy()
+            gt_trans = [original_trans, cur_trans]
+            gt_rot = [original_rot, cur_rot]
+
+            prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+            prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
+            prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
+            predict_trans = [prev_trans, _trans]
+            predict_rot = [prev_rot, _rot]
+
+            vel_list = [vel]
+            omega_list = [omega]
+            acc_list = [acc]
+            beta_list = [beta]
+            last_seq_id = seq_id
+            last_timestamp = timestamp
+            last_cam_name = cam_name
+            counter += 1
+            continue
+
+        # if counter == 5:
+        #     assert False
+
         last_seq_id = seq_id
         last_timestamp = timestamp
         last_cam_name = cam_name
-        counter += 1
-        continue
-
-    # if counter == 5:
-    #     assert False
-
-    last_seq_id = seq_id
-    last_timestamp = timestamp
-    last_cam_name = cam_name
 
 
-    vel_list.append(vel)
-    omega_list.append(omega)
-    acc_list.append(acc)
-    beta_list.append(beta)
+        vel_list.append(vel)
+        omega_list.append(omega)
+        acc_list.append(acc)
+        beta_list.append(beta)
 
-    predict_trans.append(_trans)
-    predict_rot.append(_rot)
+        predict_trans.append(_trans)
+        predict_rot.append(_rot)
 
-    target_obj_transf = batch['obj_transf_list'][:,frame_num//2+1]
-    target_trans = target_obj_transf[0, :3, 3].detach().cpu().numpy()
-    target_rot = target_obj_transf[0, :3, 0:3].detach().cpu().numpy()
+        target_obj_transf = batch['obj_transf_list'][:,frame_num//2+1]
+        target_trans = target_obj_transf[0, :3, 3].detach().cpu().numpy()
+        target_rot = target_obj_transf[0, :3, 0:3].detach().cpu().numpy()
 
-    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
-    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
-    next_trans, next_rot = compute_pos_and_rot(next_corner_3d_abs, next_box_rot_6d)
+        next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
+        next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
+        next_trans, next_rot = compute_pos_and_rot(next_corner_3d_abs, next_box_rot_6d)
 
-    gt_trans.append(cur_trans)
-    gt_rot.append(cur_rot)
+        gt_trans.append(cur_trans)
+        gt_rot.append(cur_rot)
 
-    obj_idx = batch["obj_idx"][0]
-    obj_name = total_obj_dict[obj_idx]['name']
+        obj_idx = batch["obj_idx"][0]
+        obj_name = total_obj_dict[obj_idx]['name']
 
 info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
 
@@ -235,7 +262,7 @@ try:
 except:
     print(f"Error:{info_save}_{obj_name}")
 
-save_path = f"eval_pos/eval_pos_{mode}_1841.json"
+save_path = f"eval_pos/eval_pos_{mode}_{date}.json"
 
 with open(save_path, "w") as f:
     json.dump(save_dict, f, indent=4)

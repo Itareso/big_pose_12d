@@ -46,16 +46,19 @@ def angular_velocities(q1, q2, fps):
         -q1[0]*q2[1] + q1[1]*q2[0] + q1[2]*q2[3] - q1[3]*q2[2],
         ])
 
+def angular_velocities_rot(r1, r2, fps):
+    r21 = r2 @ r1.T
+    rotvec21 = R.from_matrix(r21).as_rotvec()
+    return rotvec21 * fps
+
 def get_acc_beta_from_pose(predict_trans, predict_rot):
     vel = spline_derivative(predict_trans, fps=30)
     acc = spline_derivative(vel, fps=30)
     acc = acc[1:-1]
 
-    predict_quat = [R.from_matrix(rot).as_quat() for rot in predict_rot]
-
     omega = np.empty((len(predict_rot)-1, 3))
     for i in range(len(predict_rot)-1):
-        omega[i] = angular_velocities(predict_quat[i], predict_quat[i+1], fps=30)
+        omega[i] = angular_velocities_rot(predict_rot[i], predict_rot[i+1], fps=30)
 
     beta = np.diff(omega, axis=0) * 30
 
@@ -67,6 +70,7 @@ def get_acc_beta_from_vel(vel_list, omega_list):
     acc = spline_derivative(vel_list, fps=30)
 
     beta = np.diff(omega_list, axis=0) * 30
-    beta = np.append(beta, beta[-1].reshape(1, 3), axis=0)
+    beta = np.insert(beta, 0, beta[0], axis=0)
+    #beta = spline_derivative(omega_list, fps=30)
 
     return acc, beta

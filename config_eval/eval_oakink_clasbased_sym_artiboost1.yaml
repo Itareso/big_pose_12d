@@ -1,0 +1,145 @@
+ARCH:
+  BACKBONE:
+    FREEZE_BATCHNORM: false
+    PRETRAINED: true
+    TYPE: ResNet34
+  BOX_HEAD_KIN:
+    LAYERS_N:
+    - 1536
+    - 256
+    - 128
+    OUT_CHANNEL: 12
+    TYPE: MLP_O
+    USE_DROPOUT: false
+  BOX_HEAD_POSE:
+    LAYERS_N:
+    - 512
+    - 256
+    - 128
+    OUT_CHANNEL: 6
+    TYPE: MLP_O
+    USE_DROPOUT: false
+  DIRECT: false
+  FRAME_NUM: 3
+  HYBRID_HEAD:
+    DECONV_WITH_BIAS: false
+    DEPTH_RESOLUTION: 28
+    FINAL_CONV_KERNEL: 1
+    INPUT_CHANNEL: 512
+    NCLASSES: 22
+    NORM_TYPE: softmax
+    NUM_DECONV_FILTERS:
+    - 256
+    - 256
+    NUM_DECONV_KERNELS:
+    - 4
+    - 4
+    NUM_DECONV_LAYERS: 2
+    TYPE: IntegralDeconvHead
+  NTASKS: 13
+  PRETRAINED: checkpoints/HybridBaseline1942_58.pth.tar
+  PREVIOUS: []
+  TYPE: HybridBaseline
+CRITERION:
+- LAMBDA_CORNERS_3D: 1.0
+  LAMBDA_JOINTS_3D: 1.0
+  TYPE: JointsLoss
+- TYPE: HandOrdLoss
+- TYPE: MSEVelLoss
+  USE_LAST: true
+- TYPE: MSEAccLoss
+  USE_LAST: true
+- TYPE: MSEOmegaLoss
+  USE_LAST: true
+- TYPE: MSEBetaLoss
+  USE_LAST: true
+DATASET:
+  TEST:
+    AUG: false
+    AUG_PARAM: ''
+    DATA_ROOT: /mnt/public/datasets/OakInk
+    DATA_SPLIT: test
+    ENABLE_HANDOVER: false
+    FILTER_INVISIBLE_HAND: true
+    FRAME_NUM: 3
+    SPLIT_MODE: default
+    TYPE: OakInkImage
+    USE_LEFT_HAND: false
+  TRAIN:
+    AUG: true
+    AUG_PARAM:
+      CENTER_JIT: 0.1
+      MAX_ROT: 0.1
+      SCALE_JIT: 0.1
+    DATA_ROOT: /mnt/public/datasets/OakInk
+    DATA_SPLIT: train
+    ENABLE_HANDOVER: false
+    FILTER_INVISIBLE_HAND: true
+    FRAME_NUM: 3
+    SPLIT_MODE: default
+    TYPE: OakInkImage
+    USE_LEFT_HAND: false
+DATA_PRESET:
+  BBOX_EXPAND_RATIO: 1.2
+  CENTER_IDX: 9
+  FILTER_NO_CONTACT: true
+  FILTER_THRESH: 50.0
+  FULL_IMAGE: false
+  HEATMAP_SIGMA: 2.0
+  HEATMAP_SIZE:
+  - 28
+  - 28
+  IMAGE_SIZE:
+  - 224
+  - 224
+  PRESET_TYPE: ''
+  USE_CACHE: true
+EVALUATOR:
+- TYPE: LossesMetric
+  VIS_LOSS_KEYS: []
+- STEPS: 20
+  TYPE: Hand3DPCKMetric
+  VAL_MAX: 0.05
+  VAL_MIN: 0.0
+- MILLIMETERS: true
+  TYPE: Mean3DEPE
+  VAL_KEYS:
+  - corners_3d_abs
+  - joints_3d_abs
+- CORNER_LINK_ORDER:
+  - 0
+  - 1
+  - 3
+  - 2
+  - 4
+  - 5
+  - 7
+  - 6
+  NCOL: 6
+  NROW: 6
+  TYPE: Vis2DMetric
+LAMBDAS:
+- 0.5
+- 0.2
+- 0.01
+- 0.001
+- 0.001
+- 1.0e-06
+MANAGER:
+  EPOCH: None
+  VAL_FREQ: None
+  VAL_START_EPOCH: None
+TRAIN:
+  BATCH_SIZE: 128
+  EPOCH: 100
+  EVAL_FREQ: 5
+  GRAD_CLIP: 0.001
+  GRAD_NORM: false
+  LR: 0.0001
+  LR_DECAY_GAMMA: 1.0
+  LR_DECAY_STEP: 100
+  LR_FACTOR: 0.1
+  MANUAL_SEED: 1
+  OPTIMIZER: adam
+  VAL_START_EPOCH: 15
+  WEIGHT_DECAY: 0.0

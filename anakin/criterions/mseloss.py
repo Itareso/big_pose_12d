@@ -31,7 +31,11 @@ class MSEVelLoss(TensorLoss):
         if not self.use_last:
             vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
         else:
-            vel_real = targs[Queries.TARGET_NEXT_VEL].to(final_loss.device)
+            frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+            if frame_num == 3:  
+                vel_real = targs[Queries.TARGET_NEXT_VEL].to(final_loss.device)
+            elif frame_num == 5:
+                vel_real = targs[Queries.TARGET_NNEXT_VEL].to(final_loss.device)
         loss_vel = torch_f.mse_loss(vel_predict, vel_real).float()
         final_loss += loss_vel
 
@@ -56,7 +60,11 @@ class MSEOmegaLoss(TensorLoss):
         if not self.use_last:
             omega_real = targs[Queries.TARGET_OMEGA].to(final_loss.device)
         else:
-            omega_real = targs[Queries.TARGET_NEXT_OMEGA].to(final_loss.device)
+            frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+            if frame_num == 3:  
+                omega_real = targs[Queries.TARGET_NEXT_OMEGA].to(final_loss.device)
+            elif frame_num == 5:
+                omega_real = targs[Queries.TARGET_NNEXT_OMEGA].to(final_loss.device)
         loss_omega = torch_f.mse_loss(omega_predict, omega_real).float()
         final_loss += loss_omega
 
@@ -81,7 +89,11 @@ class MSEAccLoss(TensorLoss):
         if not self.use_last:
             acc_real = targs[Queries.TARGET_ACC].to(final_loss.device)
         else:
-            acc_real = targs[Queries.TARGET_NEXT_ACC].to(final_loss.device)
+            frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+            if frame_num == 3:  
+                acc_real = targs[Queries.TARGET_NEXT_ACC].to(final_loss.device)
+            elif frame_num == 5:
+                acc_real = targs[Queries.TARGET_NNEXT_ACC].to(final_loss.device)
         loss_acc = torch_f.mse_loss(acc_predict, acc_real).float()
         final_loss += loss_acc
 
@@ -106,7 +118,11 @@ class MSEBetaLoss(TensorLoss):
         if not self.use_last:
             beta_real = targs[Queries.TARGET_BETA].to(final_loss.device)
         else:
-            beta_real = targs[Queries.TARGET_NEXT_BETA].to(final_loss.device)
+            frame_num = targs[Queries.CORNERS_3D_LIST][0].shape[0]
+            if frame_num == 3:  
+                beta_real = targs[Queries.TARGET_NEXT_BETA].to(final_loss.device)
+            elif frame_num == 5:
+                beta_real = targs[Queries.TARGET_NNEXT_BETA].to(final_loss.device)
         loss_beta = torch_f.mse_loss(beta_predict, beta_real).float()
         final_loss += loss_beta
 
