@@ -7,6 +7,7 @@ DATASET:
     USE_LEFT_HAND: false
     FILTER_INVISIBLE_HAND: true
     AUG: true
+    FRAME_NUM: 3
 
     AUG_PARAM:
       SCALE_JIT: 0.1
@@ -22,6 +23,7 @@ DATASET:
     FILTER_INVISIBLE_HAND: true
     AUG: false
     AUG_PARAM: ''
+    FRAME_NUM: 3
 DATA_PRESET:
   PRESET_TYPE: ''
   USE_CACHE: true
@@ -42,9 +44,9 @@ TRAIN:
   BATCH_SIZE: 128
   EPOCH: 100
   OPTIMIZER: 'adam'
-  LR: 0.0001
+  LR: 0.00005
   LR_FACTOR: 0.1
-  WEIGHT_DECAY: 0
+  WEIGHT_DECAY: 0.0
   LR_DECAY_STEP: 100
   LR_DECAY_GAMMA: 1.0
   MANUAL_SEED: 1
@@ -55,7 +57,8 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: 'checkpoints/HybridBaseline1256.pth.tar'
+  PRETRAINED: 'checkpoints/HybridBaseline1936.pth.tar'
+  FRAME_NUM: 3
   BACKBONE:
     TYPE: ResNet34
     PRETRAINED: true
@@ -75,15 +78,21 @@ ARCH:
       - 4
       - 4
     FINAL_CONV_KERNEL: 1
-  BOX_HEAD:
+  BOX_HEAD_KIN:
+    TYPE: MLP_O
+    LAYERS_N: [1536, 256, 128]
+    OUT_CHANNEL: 12
+    USE_DROPOUT: False
+  BOX_HEAD_POSE:
     TYPE: MLP_O
     LAYERS_N: [512, 256, 128]
-    OUT_CHANNEL: 18
+    OUT_CHANNEL: 6
+    USE_DROPOUT: False
   PREVIOUS: []
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.1, 0.1, 0.1, 0.001, 0.01, 0.001, 0.001, 0.001, 0.00001, 0.01, 0.000001]
+LAMBDAS: [0.5, 0.2, 0.5, 0.01, 0.001, 0.001, 0.000001, 0.01, 0.001, 0.001, 0.000001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
@@ -91,24 +100,17 @@ CRITERION:
   - TYPE: HandOrdLoss
   - TYPE: SymCornerLoss
     LAMBDA_SYM_CORNERS_3D: 1.0
-    MODEL_INFO_PATH: './assets/extend_models_info.json'
-    FRAME_SEQ: 'current'
-  - TYPE: SymCornerLoss
-    LAMBDA_SYM_CORNERS_3D: 1.0
-    MODEL_INFO_PATH: './assets/extend_models_info.json'
-    FRAME_SEQ: 'prev'
-  - TYPE: SymCornerLoss
-    LAMBDA_SYM_CORNERS_3D: 1.0
-    MODEL_INFO_PATH: './assets/extend_models_info.json'
-    FRAME_SEQ: 'next'
-  - TYPE: VelCosLoss
-  - TYPE: VelMagLoss
-  - TYPE: AccCosLoss
-  - TYPE: AccMagLoss
+    MODEL_INFO_PATH: ./assets/extend_models_info.json
+  - TYPE: MSEVelLoss
+  - TYPE: MSEAccLoss
   - TYPE: MSEOmegaLoss
   - TYPE: MSEBetaLoss
+  - TYPE: VelConsistencyLoss
+  - TYPE: AccConsistencyLoss
   - TYPE: OmegaConsistencyLoss
+    MODEL_INFO_PATH: ./assets/extend_models_info.json
   - TYPE: BetaConsistencyLoss
+    MODEL_INFO_PATH: ./assets/extend_models_info.json
 
 EVALUATOR:
   - TYPE: LossesMetric
@@ -117,10 +119,10 @@ EVALUATOR:
     VAL_MIN: 0.00
     VAL_MAX: 0.05
     STEPS: 20
-  - TYPE: AR
-    USE_MSSD: true
+  - MODEL_INFO_PATH: ./assets/extend_models_info.json
     MSSD_USE_CORNERS: true
-    MODEL_INFO_PATH: './assets/extend_models_info.json'
+    TYPE: AR
+    USE_MSSD: true
   - TYPE: Mean3DEPE
     VAL_KEYS: [corners_3d_abs, joints_3d_abs]
     MILLIMETERS: true

@@ -11,6 +11,7 @@ thirdparty/
 common/
 eval_metrics/
 OakInkObjectsV2/
+models/
 *.txt
 *.json
 *.png

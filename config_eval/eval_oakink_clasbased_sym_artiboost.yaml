@@ -8,7 +8,8 @@ DATASET:
     FILTER_INVISIBLE_HAND: true
     ENABLE_HANDOVER: false
     AUG: true
-    FRAME_NUM: 5
+    FRAME_NUM: 3
+    SHRINK: false
 
     AUG_PARAM:
       SCALE_JIT: 0.1
@@ -25,7 +26,8 @@ DATASET:
     ENABLE_HANDOVER: false
     AUG: false
     AUG_PARAM: ''
-    FRAME_NUM: 5
+    FRAME_NUM: 3
+    SHRINK: false
 DATA_PRESET:
   PRESET_TYPE: ''
   USE_CACHE: true
@@ -44,7 +46,7 @@ DATA_PRESET:
 
 TRAIN:
   BATCH_SIZE: 128
-  EPOCH: 100
+  EPOCH: 50
   OPTIMIZER: 'adam'
   LR: 0.0001
   LR_FACTOR: 0.1
@@ -59,8 +61,8 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: ''
-  FRAME_NUM: 5
+  PRETRAINED: 'checkpoints/HybridBaseline1011_3.pth.tar'
+  FRAME_NUM: 3
   BACKBONE:
     TYPE: ResNet34
     PRETRAINED: true
@@ -82,7 +84,7 @@ ARCH:
     FINAL_CONV_KERNEL: 1
   BOX_HEAD_KIN:
     TYPE: MLP_O
-    LAYERS_N: [2560, 256, 128]
+    LAYERS_N: [1536, 256, 128]
     OUT_CHANNEL: 12
     USE_DROPOUT: False
   BOX_HEAD_POSE:
@@ -94,21 +96,14 @@ ARCH:
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.01, 0.001, 0.001, 0.000001]
+LAMBDAS: [0.5, 0.2, 0.001, 0.000001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
     LAMBDA_CORNERS_3D: 1.0
   - TYPE: HandOrdLoss
-  - TYPE: MSEVelLoss
-    USE_LAST: True
-  - TYPE: MSEAccLoss
-    USE_LAST: True
   - TYPE: MSEOmegaLoss
-    USE_LAST: True
   - TYPE: MSEBetaLoss
-    USE_LAST: True
-
 EVALUATOR:
   - TYPE: LossesMetric
     VIS_LOSS_KEYS: []

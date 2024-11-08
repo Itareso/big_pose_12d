@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from anakin.models.arch import Arch
 from anakin.opt import arg, cfg
 from anakin.utils import builder
@@ -34,12 +36,36 @@ def set_all_seeds(seed):
 
 set_all_seeds(cfg["TRAIN"]["MANUAL_SEED"])
 
-model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRESET"])
-model = Arch(cfg, model_list=model_list)
-model = torch.nn.DataParallel(model).to(arg.device)
-model.eval()
+# Define the policy network
+class PolicyNetwork(nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super(PolicyNetwork, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, output_dim),
+        )
+        self.log_std = nn.Parameter(torch.zeros(1, output_dim))  # Learnable log standard deviation
+
+    def forward(self, x):
+        mu = self.fc(x)
+        std = torch.exp(self.log_std)  # Standard deviation is positive
+        return mu, std
+
+def select_action(policy_net, state):
+    state = torch.FloatTensor(state).unsqueeze(0)  # Add batch dimension
+    mu, std = policy_net(state)
+    dist = torch.distributions.Normal(mu, std)  # Create a normal distribution
+    action = dist.sample()  # Sample action
+    return action.detach().numpy()[0], dist.log_prob(action).sum()  # Return action and log probability
 
 frame_num = cfg["ARCH"]["FRAME_NUM"]
+
+model = PolicyNetwork(frame_num * 9, 3)
+
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 #train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
@@ -77,13 +103,7 @@ gt_rot = []
 predict_trans = []
 predict_rot = []
 
-mode = sys.argv[1]
-
-date = sys.argv[2]
-
-use_last = sys.argv[3] == "True"
-
-dataset = sys.argv[4]
+dataset = "oakink"
 
 if dataset == "oakink":
 
@@ -110,16 +130,16 @@ elif dataset == "dexycb":
 
 counter = 0
 
-print(f"start evaluating pose loss in {date} using data from {mode}")
 
 record_acc = True
 
-with open(f"eval_pos/acc_{date}_{mode}_save.txt", "w") as f:
-    f.write("")
-
 save_dict = {}
 
-with torch.no_grad():
+
+
+for epoch_idx in range(50):
+
+    rot_loss_record = []
 
     for batch_idx, batch in enumerate(test_loader):
 
@@ -144,23 +164,6 @@ with torch.no_grad():
         cur_trans = cur_obj_transf[0, :3, 3].detach().cpu().numpy()
         cur_rot = cur_obj_transf[0, :3, 0:3].detach().cpu().numpy()
 
-        predict = model(batch)
-
-        
-        vel = data["predict_vel"]
-        omega = data["predict_omega"]
-        acc = data["predict_acc"]
-        beta = data["predict_beta"]
-        if mode == "gt" or mode == "gtfromvel":
-            vel = batch["target_vel"][0].detach().cpu().numpy()
-            omega = batch["target_omega"][0].detach().cpu().numpy()
-            acc = batch["target_acc"][0]
-            beta = batch["target_beta"][0]
-
-        corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-        box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-        _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
-
         if last_id_str is None:
             if frame_num != 1:
                 original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
@@ -169,84 +172,52 @@ with torch.no_grad():
                 gt_trans = [original_trans]
                 gt_rot = [original_rot]
                 
-
-                prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
-                prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
-                prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
-                predict_trans = [prev_trans]
-                predict_rot = [prev_rot]
             else:
                 gt_trans = []
                 gt_rot = []
-                predict_trans = []
-                predict_rot = []
 
         if last_id_str is not None and last_id_str != id_str:
             # print(last_seq_id, seq_id)
-            print(last_id_str)
-            print(len(acc_list))
+            #print(last_id_str)
             if frame_num != 1:
                 gt_trans.append(target_trans)
                 gt_rot.append(target_rot)
             gt_trans = np.array(gt_trans)
             gt_rot = np.array(gt_rot)
 
-            if frame_num != 1:
-                predict_trans.append(next_trans)
-                predict_rot.append(next_rot)
-            predict_trans = np.array(predict_trans)
-            predict_rot = np.array(predict_rot)
-            predict_trans = predict_trans.squeeze(axis=1)
-            predict_rot = predict_rot.squeeze(axis=1)
-
-            if mode == "frompose":
-                acc_list, beta_list = get_acc_beta_from_pose(predict_trans, predict_rot)
-            elif mode == "fromvel" or mode == "gtfromvel":
-                #print(vel_list, omega_list)
-                acc_list, beta_list = get_acc_beta_from_vel(vel_list, omega_list)
-            elif mode == "zeros":
-                acc_list = np.zeros((len(acc_list), 3))
-                beta_list = np.zeros((len(beta_list), 3))
-
-            if frame_num == 1 and mode == "fromvel":
-                acc_list = acc_list[1:-1]
-                beta_list = beta_list[1:-1]
-            
-            if use_last:
-                if frame_num == 3:
-                    acc_list = acc_list[:-1]
-                    beta_list = beta_list[:-1]
-                    gt_trans = gt_trans[1:]
-                    gt_rot = gt_rot[1:]
-                elif frame_num == 5:
-                    acc_list = acc_list[:-2]
-                    beta_list = beta_list[:-2]
-                    gt_trans = gt_trans[2:]
-                    gt_rot = gt_rot[2:]
-            
-            acc_list_tmp = []
-            for _acc in acc_list:
-                acc_list_tmp.append(_acc.tolist())
-
-            if record_acc:
-
-                with open(f"eval_pos/acc_{date}_{mode}_save.txt", "a") as f:
-                    f.write(f"{acc_list_tmp}\n")
-            
+            gt_rot_tensor = torch.FloatTensor(gt_rot)
+            log_probs = []
+            for idx in range(1, len(gt_rot)-1):
+                model_input = torch.cat((gt_rot_tensor[idx-1], gt_rot_tensor[idx], gt_rot_tensor[idx+1])).reshape(-1)
+                omega_tmp, log_prob = select_action(model, model_input)
+                omega_list.append(omega_tmp)
+                log_probs.append(log_prob)
+            vel_list = omega_list
+            acc_list, beta_list = get_acc_beta_from_vel(vel_list, omega_list)
             info_save = last_id_str
 
             try:
 
                 trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                                gt_rot, last_id_str, mode, dataset)
+                                gt_rot, last_id_str, "train_ang", dataset)
                 
-                save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
+                rot_loss_record.append(rot_loss)
             except:
-                print(f"Error:{info_save}_{obj_name}")
+                pass
+                #print(f"Error:{info_save}_{obj_name}")
             # trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
             #                     gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
                 
             # save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
+            #print(rot_loss)
+
+            optimizer.zero_grad()
+            rot_loss = torch.tensor(rot_loss)
+            # print(log_probs[0].requires_grad)
+            # print(rot_loss.requires_grad)
+            loss = rot_loss * torch.sum(torch.stack(log_probs))
+            loss.backward()
+            optimizer.step()
 
             if frame_num != 1:
                 original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
@@ -255,21 +226,12 @@ with torch.no_grad():
                 gt_trans = [original_trans, cur_trans]
                 gt_rot = [original_rot, cur_rot]
 
-                prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
-                prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
-                prev_trans, prev_rot = compute_pos_and_rot(prev_corner_3d_abs, prev_box_rot_6d)
-                predict_trans = [prev_trans, _trans]
-                predict_rot = [prev_rot, _rot]
             else:
                 gt_trans = [cur_trans]
                 gt_rot = [cur_rot]
-                predict_trans = [_trans]
-                predict_rot = [_rot]
 
-            vel_list = [vel]
-            omega_list = [omega]
-            acc_list = [acc]
-            beta_list = [beta]
+
+            omega_list = []
             last_id_str = id_str
             counter += 1
             continue
@@ -279,23 +241,10 @@ with torch.no_grad():
 
         last_id_str = id_str
 
-
-        vel_list.append(vel)
-        omega_list.append(omega)
-        acc_list.append(acc)
-        beta_list.append(beta)
-
-        predict_trans.append(_trans)
-        predict_rot.append(_rot)
-
         if frame_num != 1:
             target_obj_transf = batch['obj_transf_list'][:,frame_num//2+1]
             target_trans = target_obj_transf[0, :3, 3].detach().cpu().numpy()
             target_rot = target_obj_transf[0, :3, 0:3].detach().cpu().numpy()
-
-            next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
-            next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
-            next_trans, next_rot = compute_pos_and_rot(next_corner_3d_abs, next_box_rot_6d)
 
         gt_trans.append(cur_trans)
         gt_rot.append(cur_rot)
@@ -305,17 +254,6 @@ with torch.no_grad():
             obj_idx = int(obj_idx)
         obj_name = total_obj_dict[obj_idx]['name']
 
-info_save = last_id_str
+    print(f"epoch idx={epoch_idx}, rot loss={sum(rot_loss_record)/len(rot_loss_record)}")
 
-try:
-    trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                                gt_rot, last_id_str, mode, dataset)
-    info_save = last_id_str
-    save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
-except:
-    print(f"Error:{info_save}_{obj_name}")
-
-save_path = f"eval_pos/eval_pos_{mode}_{date}.json"
-
-with open(save_path, "w") as f:
-    json.dump(save_dict, f, indent=4)
+torch.save(model.state_dict(), 'checkpoints/train_ang_parameters.pth')

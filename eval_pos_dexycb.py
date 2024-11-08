@@ -50,15 +50,16 @@ test_loader = torch.utils.data.DataLoader(test_data,
                                         drop_last=False,
                                         collate_fn=ho_collate)
 
-
+save_path = "/mnt/homes/zhushengjia/DexYCBVel"
+dataset_path = "/mnt/public/datasets/DexYCB"
 
 obj_dict = {}
 
 obj_idx = None
 obj_name = None
-last_info_str = None
-id_str = None
-last_id_str = None
+last_seq_id = None
+last_timestamp = None
+last_cam_name = None
 
 cur_trans = None
 cur_rot = None
@@ -77,38 +78,23 @@ gt_rot = []
 predict_trans = []
 predict_rot = []
 
+obj_id2name_path = "/mnt/public/datasets/OakInk/shape/metaV2"
+
+obj_id_path = os.path.join(obj_id2name_path, "object_id.json")
+vir_obj_id_path = os.path.join(obj_id2name_path, "virtual_object_id.json")
+
+obj_id_dict = json.load(open(obj_id_path))
+vir_obj_id_dict = json.load(open(vir_obj_id_path))
+
+total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
+
+counter = 0
+
 mode = sys.argv[1]
 
 date = sys.argv[2]
 
 use_last = sys.argv[3] == "True"
-
-dataset = sys.argv[4]
-
-if dataset == "oakink":
-
-    obj_id2name_path = "/mnt/public/datasets/OakInk/shape/metaV2"
-    save_path = "/mnt/homes/zhushengjia/OakInkDiffNew"
-    dataset_path = "/mnt/public/datasets/OakInk"
-
-    obj_id_path = os.path.join(obj_id2name_path, "object_id.json")
-    vir_obj_id_path = os.path.join(obj_id2name_path, "virtual_object_id.json")
-
-    obj_id_dict = json.load(open(obj_id_path))
-    vir_obj_id_dict = json.load(open(vir_obj_id_path))
-
-    total_obj_dict = {**obj_id_dict, **vir_obj_id_dict}
-
-elif dataset == "dexycb":
-    save_path = "/mnt/homes/zhushengjia/DexYCBVel"
-    dataset_path = "/mnt/public/datasets/DexYCB"
-    total_obj_dict = {}
-    objects = os.listdir("./models")
-    objects.sort(key = lambda x: int(x[ : 3]))
-    for idx, obj_name in enumerate(objects):
-        total_obj_dict[idx + 1] = {"name": obj_name}
-
-counter = 0
 
 print(f"start evaluating pose loss in {date} using data from {mode}")
 
@@ -122,23 +108,11 @@ save_dict = {}
 with torch.no_grad():
 
     for batch_idx, batch in enumerate(test_loader):
-
-        if dataset == "oakink":
-            info_str = batch["info_str"][0]
-            seq_id = info_str.split("__")[0]
-            timestamp = info_str.split("__")[1]
-            frame_id = info_str.split("__")[3]
-            cam_name = info_str.split("__")[4]
-            data_path = os.path.join(save_path, seq_id, timestamp, f"{cam_name}_{frame_id}_predict.npz")
-            data = np.load(data_path)
-            id_str = seq_id + "__" + timestamp + "__" + cam_name
-        elif dataset == "dexycb":
-            label_path = batch["label_path"][0]
-            data_path = label_path.split(".")[0]+"_predict.npz"
-            data_path = os.path.join(save_path, data_path)
-            data = np.load(data_path)
-            label_list = label_path.split("/")[:-1]
-            id_str = "_".join(label_list)
+        info_str = batch["info_str"][0]
+        seq_id = info_str.split("__")[0]
+        timestamp = info_str.split("__")[1]
+        frame_id = info_str.split("__")[3]
+        cam_name = info_str.split("__")[4]
 
         cur_obj_transf = batch['obj_transf']
         cur_trans = cur_obj_transf[0, :3, 3].detach().cpu().numpy()
@@ -146,7 +120,9 @@ with torch.no_grad():
 
         predict = model(batch)
 
-        
+        data_path = os.path.join(save_path, seq_id, timestamp, f"{cam_name}_{frame_id}_predict.npz")
+        data = np.load(data_path)
+
         vel = data["predict_vel"]
         omega = data["predict_omega"]
         acc = data["predict_acc"]
@@ -161,7 +137,7 @@ with torch.no_grad():
         box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
         _trans, _rot = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
 
-        if last_id_str is None:
+        if last_seq_id is None:
             if frame_num != 1:
                 original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
                 original_trans = original_obj_transf[0, :3, 3].detach().cpu().numpy()
@@ -181,10 +157,9 @@ with torch.no_grad():
                 predict_trans = []
                 predict_rot = []
 
-        if last_id_str is not None and last_id_str != id_str:
+        if last_seq_id is not None and (last_seq_id != seq_id or last_timestamp != timestamp or last_cam_name != cam_name):
             # print(last_seq_id, seq_id)
-            print(last_id_str)
-            print(len(acc_list))
+            # print(len(acc_list))
             if frame_num != 1:
                 gt_trans.append(target_trans)
                 gt_rot.append(target_rot)
@@ -233,20 +208,16 @@ with torch.no_grad():
                 with open(f"eval_pos/acc_{date}_{mode}_save.txt", "a") as f:
                     f.write(f"{acc_list_tmp}\n")
             
-            info_save = last_id_str
+            info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
 
             try:
 
                 trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                                gt_rot, last_id_str, mode, dataset)
+                                gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
                 
                 save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
             except:
                 print(f"Error:{info_save}_{obj_name}")
-            # trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-            #                     gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
-                
-            # save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
 
             if frame_num != 1:
                 original_obj_transf = batch['obj_transf_list'][:,frame_num//2-1]
@@ -270,14 +241,18 @@ with torch.no_grad():
             omega_list = [omega]
             acc_list = [acc]
             beta_list = [beta]
-            last_id_str = id_str
+            last_seq_id = seq_id
+            last_timestamp = timestamp
+            last_cam_name = cam_name
             counter += 1
             continue
 
         # if counter == 5:
         #     assert False
 
-        last_id_str = id_str
+        last_seq_id = seq_id
+        last_timestamp = timestamp
+        last_cam_name = cam_name
 
 
         vel_list.append(vel)
@@ -301,16 +276,14 @@ with torch.no_grad():
         gt_rot.append(cur_rot)
 
         obj_idx = batch["obj_idx"][0]
-        if dataset == "dexycb":
-            obj_idx = int(obj_idx)
         obj_name = total_obj_dict[obj_idx]['name']
 
-info_save = last_id_str
+info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
 
 try:
     trans_loss, rot_loss = eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                                gt_rot, last_id_str, mode, dataset)
-    info_save = last_id_str
+                                gt_rot, last_seq_id, last_timestamp, last_cam_name, mode)
+    info_save = f"{last_seq_id}__{last_timestamp}__{last_cam_name}"
     save_dict[info_save] = {"trans_loss":trans_loss, "rot_loss":rot_loss}
 except:
     print(f"Error:{info_save}_{obj_name}")

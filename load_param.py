@@ -87,117 +87,117 @@ dataset_path = "/mnt/public/datasets/DexYCB"
 obj_dict = {}
 
 for batch_idx, batch in enumerate(test_loader):
-    target_vel = batch['target_vel']
-    target_omega = batch['target_omega']
-    target_acc = batch['target_acc']
-    target_beta = batch['target_beta']
-    target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
+    # target_vel = batch['target_vel']
+    # target_omega = batch['target_omega']
+    # target_acc = batch['target_acc']
+    # target_beta = batch['target_beta']
+    # target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
     predict = model(batch)
-    predict_6d = predict['HybridBaseline']['box_vel_12d']
+    predict_6d = predict['HybridBaseline']['box_kin_12d']
     predict_vel = predict_6d[:, 0:3]
     predict_omega = predict_6d[:, 3:6]
     predict_acc = predict_6d[:, 6:9]
     predict_beta = predict_6d[:, 9:12]
 
-    corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    prev_corner_3d_abs = predict['HybridBaseline']["prev_corners_3d_abs"]
-    next_corner_3d_abs = predict['HybridBaseline']["next_corners_3d_abs"]
-    box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    prev_box_rot_6d = predict['HybridBaseline']["prev_box_rot_6d"]
-    next_box_rot_6d = predict['HybridBaseline']["next_box_rot_6d"]
+    # corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
+    # prev_corner_3d_abs = predict['HybridBaseline']["prev_corners_3d_abs"]
+    # next_corner_3d_abs = predict['HybridBaseline']["next_corners_3d_abs"]
+    # box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
+    # prev_box_rot_6d = predict['HybridBaseline']["prev_box_rot_6d"]
+    # next_box_rot_6d = predict['HybridBaseline']["next_box_rot_6d"]
     fps = 30
-    vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
-    vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
-    acc = (vel2 - vel1) * fps
-    beta = (omega2 - omega1) * fps
-    if predict_pos2vel is None:
-        predict_pos2vel = vel1
-        predict_pos2omega = omega1
-        predict_pos2acc = acc
-        predict_pos2beta = beta
-    else:
-        predict_pos2vel = torch.cat((predict_pos2vel, vel1), dim=0)
-        predict_pos2omega = torch.cat((predict_pos2omega, omega1), dim=0)
-        predict_pos2acc = torch.cat((predict_pos2acc, acc), dim=0)
-        predict_pos2beta = torch.cat((predict_pos2beta, beta), dim=0)
+    # vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
+    # vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
+    # acc = (vel2 - vel1) * fps
+    # beta = (omega2 - omega1) * fps
+    # if predict_pos2vel is None:
+    #     predict_pos2vel = vel1
+    #     predict_pos2omega = omega1
+    #     predict_pos2acc = acc
+    #     predict_pos2beta = beta
+    # else:
+    #     predict_pos2vel = torch.cat((predict_pos2vel, vel1), dim=0)
+    #     predict_pos2omega = torch.cat((predict_pos2omega, omega1), dim=0)
+    #     predict_pos2acc = torch.cat((predict_pos2acc, acc), dim=0)
+    #     predict_pos2beta = torch.cat((predict_pos2beta, beta), dim=0)
 
     obj_id = batch["obj_idx"].detach().cpu().numpy()
     grasp_idx = batch['grasp_idx']
-    if target_data is None:
-        target_data = target_6d
-        predict_data = predict_6d
-    else:
-        target_data = torch.cat((target_data, target_6d), dim=0)
-        predict_data = torch.cat((predict_data, predict_6d), dim=0)
+    # if target_data is None:
+    #     target_data = target_6d
+    #     predict_data = predict_6d
+    # else:
+    #     target_data = torch.cat((target_data, target_6d), dim=0)
+    #     predict_data = torch.cat((predict_data, predict_6d), dim=0)
     
     label_paths = batch["label_path"]
     #print(label_paths)
 
-    _predict_pos, _predict_quat = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
-    predict_pos = np.append(predict_pos, _predict_pos, axis=0)
-    predict_quat = np.append(predict_quat, _predict_quat, axis=0)
-    for i, label_path in enumerate(label_paths):
-        trans, rot = get_trans_rot(label_path, grasp_idx[i])
-        # print(trans.shape, rot.shape)
-        gt_pos = np.append(gt_pos, trans, axis=0)
-        gt_quat = np.append(gt_quat, rot, axis=0)
-    if batch_idx == 1:
-        break
-    # print(label_paths)
+    # _predict_pos, _predict_quat = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
+    # predict_pos = np.append(predict_pos, _predict_pos, axis=0)
+    # predict_quat = np.append(predict_quat, _predict_quat, axis=0)
     # for i, label_path in enumerate(label_paths):
-    #     label_path = label_path.split(".")[0]+"_predict_0708_1918.npz"
-    #     label_path = os.path.join(save_path, label_path)
-    #     np.savez(label_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy(), obj_id=obj_id[i])
+    #     trans, rot = get_trans_rot(label_path, grasp_idx[i])
+    #     # print(trans.shape, rot.shape)
+    #     gt_pos = np.append(gt_pos, trans, axis=0)
+    #     gt_quat = np.append(gt_quat, rot, axis=0)
+    # if batch_idx == 1:
+    #     break
+    # print(label_paths)
+    for i, label_path in enumerate(label_paths):
+        label_path = label_path.split(".")[0]+"_predict.npz"
+        label_path = os.path.join(save_path, label_path)
+        np.savez(label_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy(), obj_id=obj_id[i])
     # print(f"save success: batch_idx: {batch_idx}")
 
-predict_frompos = torch.cat((predict_pos2vel, predict_pos2omega, predict_pos2acc, predict_pos2beta), dim=1)
+# predict_frompos = torch.cat((predict_pos2vel, predict_pos2omega, predict_pos2acc, predict_pos2beta), dim=1)
 
-tags = ["vel_x", "vel_y", "vel_z", "omega_x", "omega_y", "omega_z", "acc_x", "acc_y", "acc_z", "beta_x", "beta_y", "beta_z"]
+# tags = ["vel_x", "vel_y", "vel_z", "omega_x", "omega_y", "omega_z", "acc_x", "acc_y", "acc_z", "beta_x", "beta_y", "beta_z"]
 
-for i, tag in enumerate(tags):
-    plt.plot(target_data[:, i].detach().cpu().numpy(), label=f"target_{tag}")
-    plt.plot(predict_data[:, i].detach().cpu().numpy(), label=f"predict_{tag}")
-    #plt.plot(predict_frompos[:, i].detach().cpu().numpy(), label=f"predict_frompos_{tag}")
-    plt.legend()
-    plt.savefig(f"images/output_{tag}.png")
-    plt.cla()
+# for i, tag in enumerate(tags):
+#     plt.plot(target_data[:, i].detach().cpu().numpy(), label=f"target_{tag}")
+#     plt.plot(predict_data[:, i].detach().cpu().numpy(), label=f"predict_{tag}")
+#     #plt.plot(predict_frompos[:, i].detach().cpu().numpy(), label=f"predict_frompos_{tag}")
+#     plt.legend()
+#     plt.savefig(f"images/output_{tag}.png")
+#     plt.cla()
 
-print(gt_pos.shape, predict_pos.shape)
+# print(gt_pos.shape, predict_pos.shape)
 
-# print(gt_pos[:50, 1])
-# print(predict_pos[:50, 1])
+# # print(gt_pos[:50, 1])
+# # print(predict_pos[:50, 1])
 
-_axis = ["x", "y", "z"]
+# _axis = ["x", "y", "z"]
 
-for i, axis in enumerate(_axis):
-    plt.plot(predict_pos[:, i], label=f"predict_pos_{axis}")
-    plt.plot(gt_pos[:, i], label=f"gt_pos_{axis}")
-    plt.legend()
-    plt.savefig(f"images/output_pos_{axis}.png")
-    plt.cla()
+# for i, axis in enumerate(_axis):
+#     plt.plot(predict_pos[:, i], label=f"predict_pos_{axis}")
+#     plt.plot(gt_pos[:, i], label=f"gt_pos_{axis}")
+#     plt.legend()
+#     plt.savefig(f"images/output_pos_{axis}.png")
+#     plt.cla()
 
 
-predict_pos2vel = np.diff(predict_pos, axis=0) * 30
-gt_pos2vel = np.diff(gt_pos, axis=0) * 30
+# predict_pos2vel = np.diff(predict_pos, axis=0) * 30
+# gt_pos2vel = np.diff(gt_pos, axis=0) * 30
 
-# kill outliers between different images
-for i in range(len(gt_pos2vel)):
-    for j in range(3):
-        if abs(gt_pos2vel[i, j]) > 2:
-            gt_pos2vel[i, j] = 0
-        if abs(predict_pos2vel[i, j]) > 2:
-            predict_pos2vel[i, j] = 0
+# # kill outliers between different images
+# for i in range(len(gt_pos2vel)):
+#     for j in range(3):
+#         if abs(gt_pos2vel[i, j]) > 2:
+#             gt_pos2vel[i, j] = 0
+#         if abs(predict_pos2vel[i, j]) > 2:
+#             predict_pos2vel[i, j] = 0
 
-for i, axis in enumerate(_axis):
-    plt.plot(predict_pos2vel[:, i], label=f"predict_pos2vel_{axis}")
-    plt.plot(gt_pos2vel[:, i], label=f"gt_pos2vel_{axis}")
-    plt.legend()
-    plt.savefig(f"images/output_pos2vel_{axis}.png")
-    plt.cla()
+# for i, axis in enumerate(_axis):
+#     plt.plot(predict_pos2vel[:, i], label=f"predict_pos2vel_{axis}")
+#     plt.plot(gt_pos2vel[:, i], label=f"gt_pos2vel_{axis}")
+#     plt.legend()
+#     plt.savefig(f"images/output_pos2vel_{axis}.png")
+#     plt.cla()
 
-for i, axis in enumerate(_axis):
-    plt.plot(predict_quat[:, i], label=f"predict_quat_{axis}")
-    plt.plot(gt_quat[:, i], label=f"gt_quat_{axis}")
-    plt.legend()
-    plt.savefig(f"images/output_quat_{axis}.png")
-    plt.cla()
+# for i, axis in enumerate(_axis):
+#     plt.plot(predict_quat[:, i], label=f"predict_quat_{axis}")
+#     plt.plot(gt_quat[:, i], label=f"gt_quat_{axis}")
+#     plt.legend()
+#     plt.savefig(f"images/output_quat_{axis}.png")
+#     plt.cla()

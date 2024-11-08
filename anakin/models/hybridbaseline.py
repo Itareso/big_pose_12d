@@ -76,6 +76,7 @@ class HybridBaseline(nn.Module):
         kin_mlp_input = features_list[0]["res_layer4_mean"]
         for i in range(1, self.frame_num):
             kin_mlp_input = torch.cat((kin_mlp_input, features_list[i]["res_layer4_mean"]), dim=1)
+        # kin_mlp_input = torch.cat(box_rot_6d_list, dim=1)
         box_kin_12d = self.box_head_kin(kin_mlp_input)
 
         # prev_box_vel_12d = box_rot_12d_prev[:,6:18]

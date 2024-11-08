@@ -5,9 +5,9 @@ ARCH:
     TYPE: ResNet34
   BOX_HEAD_KIN:
     LAYERS_N:
-    - 1536
-    - 256
-    - 128
+    - 18
+    - 64
+    - 36
     OUT_CHANNEL: 12
     TYPE: MLP_O
     USE_DROPOUT: false
@@ -37,7 +37,7 @@ ARCH:
     NUM_DECONV_LAYERS: 2
     TYPE: IntegralDeconvHead
   NTASKS: 13
-  PRETRAINED: checkpoints/HybridBaseline1426.pth.tar
+  PRETRAINED: ''
   PREVIOUS: []
   TYPE: HybridBaseline
 CRITERION:
@@ -45,6 +45,8 @@ CRITERION:
   LAMBDA_JOINTS_3D: 1.0
   TYPE: JointsLoss
 - TYPE: HandOrdLoss
+- TYPE: MSEVelLoss
+- TYPE: MSEAccLoss
 - TYPE: MSEOmegaLoss
 - TYPE: MSEBetaLoss
 DATASET:
@@ -56,7 +58,7 @@ DATASET:
     ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
     FRAME_NUM: 3
-    SHRINK: false
+    SHRINK: true
     SPLIT_MODE: default
     TYPE: OakInkImage
     USE_LEFT_HAND: false
@@ -71,7 +73,7 @@ DATASET:
     ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
     FRAME_NUM: 3
-    SHRINK: false
+    SHRINK: true
     SPLIT_MODE: default
     TYPE: OakInkImage
     USE_LEFT_HAND: false
@@ -117,6 +119,8 @@ EVALUATOR:
 LAMBDAS:
 - 0.5
 - 0.2
+- 0.01
+- 0.001
 - 0.001
 - 1.0e-06
 MANAGER:

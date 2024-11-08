@@ -5,7 +5,7 @@ ARCH:
     TYPE: ResNet34
   BOX_HEAD_KIN:
     LAYERS_N:
-    - 1536
+    - 512
     - 256
     - 128
     OUT_CHANNEL: 12
@@ -20,7 +20,7 @@ ARCH:
     TYPE: MLP_O
     USE_DROPOUT: false
   DIRECT: false
-  FRAME_NUM: 3
+  FRAME_NUM: 1
   HYBRID_HEAD:
     DECONV_WITH_BIAS: false
     DEPTH_RESOLUTION: 28
@@ -37,28 +37,35 @@ ARCH:
     NUM_DECONV_LAYERS: 2
     TYPE: IntegralDeconvHead
   NTASKS: 13
-  PRETRAINED: checkpoints/HybridBaseline1426.pth.tar
+  PRETRAINED: checkpoints/HybridBaseline1653.pth.tar
   PREVIOUS: []
   TYPE: HybridBaseline
 CRITERION:
-- LAMBDA_CORNERS_3D: 1.0
+- LAMBDA_CORNERS_3D: 0.0
   LAMBDA_JOINTS_3D: 1.0
   TYPE: JointsLoss
 - TYPE: HandOrdLoss
+- LAMBDA_SYM_CORNERS_3D: 1.0
+  MODEL_INFO_PATH: ./assets/extend_models_info.json
+  TYPE: SymCornerLoss
+- TYPE: MSEVelLoss
+- TYPE: MSEAccLoss
 - TYPE: MSEOmegaLoss
 - TYPE: MSEBetaLoss
+- TYPE: VelConsistencyLoss
+- TYPE: AccConsistencyLoss
+- TYPE: OmegaConsistencyLoss
+- TYPE: BetaConsistencyLoss
 DATASET:
   TEST:
     AUG: false
     AUG_PARAM: ''
-    DATA_ROOT: /mnt/public/datasets/OakInk
+    DATA_ROOT: /mnt/public/datasets
     DATA_SPLIT: test
-    ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
-    FRAME_NUM: 3
-    SHRINK: false
-    SPLIT_MODE: default
-    TYPE: OakInkImage
+    FRAME_NUM: 1
+    SPLIT_MODE: s0
+    TYPE: DexYCB
     USE_LEFT_HAND: false
   TRAIN:
     AUG: true
@@ -66,14 +73,12 @@ DATASET:
       CENTER_JIT: 0.1
       MAX_ROT: 0.1
       SCALE_JIT: 0.1
-    DATA_ROOT: /mnt/public/datasets/OakInk
+    DATA_ROOT: /mnt/public/datasets
     DATA_SPLIT: train
-    ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
-    FRAME_NUM: 3
-    SHRINK: false
-    SPLIT_MODE: default
-    TYPE: OakInkImage
+    FRAME_NUM: 1
+    SPLIT_MODE: s0
+    TYPE: DexYCB
     USE_LEFT_HAND: false
 DATA_PRESET:
   BBOX_EXPAND_RATIO: 1.2
@@ -97,6 +102,10 @@ EVALUATOR:
   TYPE: Hand3DPCKMetric
   VAL_MAX: 0.05
   VAL_MIN: 0.0
+- MODEL_INFO_PATH: ./assets/extend_models_info.json
+  MSSD_USE_CORNERS: true
+  TYPE: AR
+  USE_MSSD: true
 - MILLIMETERS: true
   TYPE: Mean3DEPE
   VAL_KEYS:
@@ -117,19 +126,26 @@ EVALUATOR:
 LAMBDAS:
 - 0.5
 - 0.2
+- 0.5
+- 0.01
 - 0.001
-- 1.0e-06
+- 0.0005
+- 5.0e-07
+- 0.01
+- 0.001
+- 0.0005
+- 5.0e-07
 MANAGER:
   EPOCH: None
   VAL_FREQ: None
   VAL_START_EPOCH: None
 TRAIN:
   BATCH_SIZE: 128
-  EPOCH: 50
+  EPOCH: 100
   EVAL_FREQ: 5
   GRAD_CLIP: 0.001
   GRAD_NORM: false
-  LR: 0.0001
+  LR: 5.0e-05
   LR_DECAY_GAMMA: 1.0
   LR_DECAY_STEP: 100
   LR_FACTOR: 0.1

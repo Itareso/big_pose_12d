@@ -95,18 +95,28 @@ class OakInkImage(HOdata):
         self._mode_split = cfg["SPLIT_MODE"]
         self._enable_handover = cfg["ENABLE_HANDOVER"]
         self.frame_num = cfg.get("FRAME_NUM", 3)
+        self.shrink = cfg.get("SHRINK", False)
         if self._enable_handover:
             assert self._data_split == "all", "handover need to be enabled in all split"
 
         oakink_name = f"{self._data_split}_{self._mode_split}"
         logger.info(f"OakInk use split: {oakink_name}")
 
-        self.cache_identifier_dict = {
-            "data_split": self._data_split,
-            "split_mode": self._mode_split,
-            "frame_num": self.frame_num,
-            "cache_version": 8
-        }
+        if not self.shrink:
+            self.cache_identifier_dict = {
+                "data_split": self._data_split,
+                "split_mode": self._mode_split,
+                "frame_num": self.frame_num,
+                "cache_version": 8
+            }
+        else:
+            self.cache_identifier_dict = {
+                "data_split": self._data_split,
+                "split_mode": self._mode_split,
+                "frame_num": self.frame_num,
+                "cache_version": 8,
+                "shrink": True
+            }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
         self.cache_path = os.path.join("common", "cache", self._name, "{}.pkl".format(self.cache_identifier))
@@ -165,7 +175,10 @@ class OakInkImage(HOdata):
                     counter += 1
                 else:
                     self.info_list.append(info)
+            if self.shrink:
+                self.info_list = self.info_list[0:len(self.info_list)//20]
             logger.info(f"Filtered {counter} samples")
+            logger.info(f"dataset length {len(self.info_list)}")
             with open(self.cache_path, "wb") as p_f:
                 pickle.dump(self.info_list, p_f)
             logger.info(f"Wrote cache for {self._name}_{self._data_split}_{self._mode_split} to {self.cache_path}")

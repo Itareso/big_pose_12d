@@ -109,6 +109,16 @@ class VelConsistencyLoss(TensorLoss):
 class OmegaConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(OmegaConsistencyLoss, self).__init__()
+        self.exist_model_info = True
+        try:
+            model_info_path = cfg["MODEL_INFO_PATH"]
+        except:
+            self.exist_model_info = False
+        if self.exist_model_info:
+            self.model_info = json.load(open(model_info_path, "r"))
+            self.model_sym = {}
+            for obj_idx in range(1, len(self.model_info) + 1):
+                self.model_sym[obj_idx] = get_symmetry_transformations(self.model_info[str(obj_idx)], 0.01)
 
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
@@ -123,7 +133,16 @@ class OmegaConsistencyLoss(TensorLoss):
             omega_mid = (omega1 + omega2) / 2
         omega_predict = preds["box_kin_12d"][:, 3:6]
 
-        omega_loss = torch_f.mse_loss(omega_mid, omega_predict).float()
+        if self.exist_model_info:
+            self.obj_idx = targs[Queries.OBJ_IDX]
+            self.no_sym = torch.tensor([len(self.model_sym[i.item()]) == 1 for i in self.obj_idx], dtype = torch.int32).to(final_loss.device)
+            omega_predict_mask = omega_predict[self.no_sym == 1]
+            omega_mid_mask = omega_mid[self.no_sym == 1]
+        else:
+            omega_predict_mask = omega_predict
+            omega_mid_mask = omega_mid
+
+        omega_loss = torch_f.mse_loss(omega_mid_mask, omega_predict_mask).float()
         final_loss += omega_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -162,6 +181,17 @@ class BetaConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(BetaConsistencyLoss, self).__init__()
 
+        self.exist_model_info = True
+        try:
+            model_info_path = cfg["MODEL_INFO_PATH"]
+        except:
+            self.exist_model_info = False
+        if self.exist_model_info:
+            self.model_info = json.load(open(model_info_path, "r"))
+            self.model_sym = {}
+            for obj_idx in range(1, len(self.model_info) + 1):
+                self.model_sym[obj_idx] = get_symmetry_transformations(self.model_info[str(obj_idx)], 0.01)
+
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -175,7 +205,16 @@ class BetaConsistencyLoss(TensorLoss):
             beta_mid = (omega2 - omega1) * 30
         beta_predict = preds["box_kin_12d"][:, 9:12]
 
-        beta_loss = torch_f.mse_loss(beta_mid, beta_predict).float()
+        if self.exist_model_info:
+            self.obj_idx = targs[Queries.OBJ_IDX]
+            self.no_sym = torch.tensor([len(self.model_sym[i.item()]) == 1 for i in self.obj_idx], dtype = torch.int32).to(final_loss.device)
+            beta_predict_mask = beta_predict[self.no_sym == 1]
+            beta_mid_mask = beta_mid[self.no_sym == 1]
+        else:
+            beta_predict_mask = beta_predict
+            beta_mid_mask = beta_mid
+
+        beta_loss = torch_f.mse_loss(beta_mid_mask, beta_predict_mask).float()
         final_loss += beta_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

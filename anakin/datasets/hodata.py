@@ -517,20 +517,27 @@ class HOdata(ABC):
         
         if self.name == "OakInkImage":
             sample[Queries.INFO_STR] = self.get_info_str(idx)
+            
+        if self.frame_num >= 3:
             sample[Queries.TARGET_NEXT_VEL] = self.get_real_vel(idx, 1)
             sample[Queries.TARGET_NEXT_OMEGA] = self.get_real_omega(idx, 1)
             sample[Queries.TARGET_NEXT_ACC] = self.get_real_acc(idx, 1)
             sample[Queries.TARGET_NEXT_BETA] = self.get_real_beta(idx, 1)
-            if self.frame_num == 5:
-                sample[Queries.TARGET_NNEXT_VEL] = self.get_real_vel(idx, 2)
-                sample[Queries.TARGET_NNEXT_OMEGA] = self.get_real_omega(idx, 2)
-                sample[Queries.TARGET_NNEXT_ACC] = self.get_real_acc(idx, 2)
-                sample[Queries.TARGET_NNEXT_BETA] = self.get_real_beta(idx, 2)
-            else:
-                sample[Queries.TARGET_NNEXT_VEL] = np.zeros(3)
-                sample[Queries.TARGET_NNEXT_OMEGA] = np.zeros(3)
-                sample[Queries.TARGET_NNEXT_ACC] = np.zeros(3)
-                sample[Queries.TARGET_NNEXT_BETA] = np.zeros(3)
+        else:
+            sample[Queries.TARGET_NEXT_VEL] = np.zeros(3)
+            sample[Queries.TARGET_NEXT_OMEGA] = np.zeros(3)
+            sample[Queries.TARGET_NEXT_ACC] = np.zeros(3)
+            sample[Queries.TARGET_NEXT_BETA] = np.zeros(3)
+        if self.frame_num >= 5:
+            sample[Queries.TARGET_NNEXT_VEL] = self.get_real_vel(idx, 2)
+            sample[Queries.TARGET_NNEXT_OMEGA] = self.get_real_omega(idx, 2)
+            sample[Queries.TARGET_NNEXT_ACC] = self.get_real_acc(idx, 2)
+            sample[Queries.TARGET_NNEXT_BETA] = self.get_real_beta(idx, 2)
+        else:
+            sample[Queries.TARGET_NNEXT_VEL] = np.zeros(3)
+            sample[Queries.TARGET_NNEXT_OMEGA] = np.zeros(3)
+            sample[Queries.TARGET_NNEXT_ACC] = np.zeros(3)
+            sample[Queries.TARGET_NNEXT_BETA] = np.zeros(3)
 
         return sample
 

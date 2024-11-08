@@ -35,6 +35,8 @@ class DexYCB(HOdata):
         self.filter_invisible_hand = cfg["FILTER_INVISIBLE_HAND"]
         self.dataset = None
 
+        self.frame_num = cfg.get("FRAME_NUM", 3)
+
         self.dexycb_mano_right = ManoLayer(
             flat_hand_mean=False,
             side="right",
@@ -64,6 +66,8 @@ class DexYCB(HOdata):
             "fliter_no_contact": self.filter_no_contact,
             "use_left_hand": self.use_left_hand,
             "filter_invisible_hand": self.filter_invisible_hand,
+            "frame_num": self.frame_num,
+            "cache_version": 0
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
@@ -98,7 +102,7 @@ class DexYCB(HOdata):
                     files = os.listdir("/".join(sample["label_file"].split("/")[:-1]))
                     label_files = [f for f in files if f.endswith(".npz")]
                     label_nums = len(label_files)
-                    if int(sample["label_file"].split("/")[-1][-10:-4]) in [0, label_nums - 1]:
+                    if int(sample["label_file"].split("/")[-1][-10:-4]) in list(range(0, self.frame_num//2)) + list(range(label_nums - self.frame_num//2, label_nums)):
                         counter += 1
                         continue
                     if not self.use_left_hand and sample["mano_side"] == "left":
@@ -233,40 +237,27 @@ class DexYCB(HOdata):
         bone_len = batch_ref_bone_len(np.expand_dims(joints_3d, axis=0)).squeeze(0)
         return bone_len.astype(np.float32)
 
-    def get_image(self, idx):
+    def get_image(self, idx, seq = 0):
         img_path = self.get_image_path(idx)
+        img_path = "/".join(img_path.split("/")[:-1])+"/"+img_path.split("/")[-1][:-10]+str(int(img_path.split("/")[-1][-10:-4]) + seq).zfill(6)+".jpg"
         img = Image.open(img_path).convert("RGB")
-        return img
-    
-    def get_next_image(self, idx):
-        img_path = self.get_image_path(idx)
-        try:
-            next_img_path = "/".join(img_path.split("/")[:-1])+"/"+img_path.split("/")[-1][:-10]+str(int(img_path.split("/")[-1][-10:-4])+1).zfill(6)+".jpg"
-            img = Image.open(next_img_path).convert("RGB")
-        except:
-            logger.info(f"Next image not found for {img_path}")
-        return img
-
-    def get_prev_image(self, idx):
-        img_path = self.get_image_path(idx)
-        try:
-            prev_img_path = "/".join(img_path.split("/")[:-1])+"/"+img_path.split("/")[-1][:-10]+str(int(img_path.split("/")[-1][-10:-4])-1).zfill(6)+".jpg"
-            img = Image.open(prev_img_path).convert("RGB")
-        except:
-            logger.info(f"Next image not found for {img_path}")
         return img
 
     def get_image_path(self, idx):
         sample = self.dataset[idx]
         return sample["color_file"]
 
-    def get_joints_2d(self, idx):
+    def get_joints_2d(self, idx, seq = 0):
         sample = self.dataset[idx]
+        label_file = sample["label_file"]
+        label_file = "/".join(label_file.split("/")[:-1]) + "/labels_%06d.npz" % (int(label_file.split("/")[-1][-10:-4]) + seq)
         label = self.get_label(sample["label_file"])  # keys: seg, pose_y, pose_m, joint_3d, joint_2d
         return label["joint_2d"].squeeze(0)
 
-    def get_joints_3d(self, idx):
+    def get_joints_3d(self, idx, seq = 0):
         sample = self.dataset[idx]
+        label_file = sample["label_file"]
+        label_file = "/".join(label_file.split("/")[:-1]) + "/labels_%06d.npz" % (int(label_file.split("/")[-1][-10:-4]) + seq)
         label = self.get_label(sample["label_file"])  # keys: seg, pose_y, pose_m, joint_3d, joint_2d
         return label["joint_3d"].squeeze(0)
 
@@ -297,12 +288,6 @@ class DexYCB(HOdata):
             [np.concatenate([R, new_t], axis=1),
              np.array([[0.0, 0.0, 0.0, 1.0]], dtype=np.float32)])
         return new_transf.astype(np.float32)
-    
-    def get_prev_obj_transf(self, idx):
-        return self.get_obj_transf(idx, -1)
-
-    def get_next_obj_transf(self, idx):
-        return self.get_obj_transf(idx, 1)
 
     # * deprecated
     def _get_raw_obj_transf(self, idx):
@@ -388,64 +373,47 @@ class DexYCB(HOdata):
         sample = self.dataset[idx]
         return sample["mano_side"]
 
-    def get_real_vel(self, idx):
+    def get_real_vel(self, idx, seq = 0):
         sample = self.dataset[idx]
         data_path = "/mnt/homes/zhushengjia/DexYCBVel"
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
+        label_file = self.get_label_path(idx, seq)
         label_path = os.path.join(data_path, label_file)
         label = np.load(label_path)
         vel = label["vel"][sample["ycb_grasp_ind"]]
         return vel.astype(np.float32)
 
-    def get_real_omega(self, idx):
+    def get_real_omega(self, idx, seq = 0):
         sample = self.dataset[idx]
         data_path = "/mnt/homes/zhushengjia/DexYCBVel"
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
+        label_file = self.get_label_path(idx, seq)
         label_path = os.path.join(data_path, label_file)
         label = np.load(label_path)
         omega = label["omega"][sample["ycb_grasp_ind"]]
         return omega.astype(np.float32)
 
-    def get_real_acc(self, idx):
+    def get_real_acc(self, idx, seq = 0):
         sample = self.dataset[idx]
         data_path = "/mnt/homes/zhushengjia/DexYCBVel"
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
+        label_file = self.get_label_path(idx, seq)
         label_path = os.path.join(data_path, label_file)
         label = np.load(label_path)
         acc = label["acc"][sample["ycb_grasp_ind"]]
         return acc.astype(np.float32)
     
-    def get_real_beta(self, idx):
+    def get_real_beta(self, idx, seq = 0):
         sample = self.dataset[idx]
         data_path = "/mnt/homes/zhushengjia/DexYCBVel"
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
+        label_file = self.get_label_path(idx, seq)
         label_path = os.path.join(data_path, label_file)
         label = np.load(label_path)
         beta = label["beta"][sample["ycb_grasp_ind"]]
         return beta.astype(np.float32)
     
-    def get_label_path(self, idx):
+    def get_label_path(self, idx, seq = 0):
         sample = self.dataset[idx]
         label_file = sample["label_file"]
         label_file = "/".join(label_file.split("/")[5:])
-        return label_file
-    
-    def get_prev_label_path(self, idx):
-        sample = self.dataset[idx]
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
-        label_file = label_file[:-10]+str(int(label_file[-10:-4])-1).zfill(6)+".npz"
-        return label_file
-    
-    def get_next_label_path(self, idx):
-        sample = self.dataset[idx]
-        label_file = sample["label_file"]
-        label_file = "/".join(label_file.split("/")[5:])
-        label_file = label_file[:-10]+str(int(label_file[-10:-4])+1).zfill(6)+".npz"
+        label_file = label_file[:-10]+str(int(label_file[-10:-4])+seq).zfill(6)+".npz"
         return label_file
 
     def get_grasp_idx(self, idx):

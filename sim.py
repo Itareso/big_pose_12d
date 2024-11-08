@@ -46,15 +46,31 @@ p.setTimeStep(1./sim_freq)
 
 print(pybullet_data.getDataPath())
 
-dataset_path = "/mnt/public/datasets/OakInk"
-obj_path = "OakInkObjectsV2"
+
 
 shift = [0, -0.02, 0]
 scale = [1, 1, 1]
 
 
 def eval_object_pos(obj_name, acc_list, beta_list, gt_trans, 
-                    gt_rot, seq_id, timestamp, cam_name, mode):
+                    gt_rot, id_str, mode, dataset = "oakink"):
+    
+    if dataset == "oakink":
+        dataset_path = "/mnt/public/datasets/OakInk"
+        obj_path = "OakInkObjectsV2"
+        obj_shape_path = os.path.join(obj_path, obj_name, "align")
+        obj_files = os.listdir(obj_shape_path)
+        try:
+            obj_file = [f for f in obj_files if f.endswith(".obj")][0]
+        except:
+            obj_file = [f for f in obj_files if f.endswith(".ply")][0]
+        visual_file, collision_file = obj_file, obj_file
+    elif dataset == "dexycb":
+        obj_path = "models"
+        obj_shape_path = os.path.join(obj_path, obj_name)
+        obj_files = os.listdir(obj_shape_path)
+        visual_file = [f for f in obj_files if f.endswith(".obj") and "simple" not in f][0]
+        collision_file = [f for f in obj_files if f.endswith(".obj") and "simple" in f][0]
     
     original_trans = gt_trans[0]
     original_rot = gt_rot[0]
@@ -62,20 +78,16 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
     target_trans = gt_trans[-1]
     target_rot = gt_rot[-1]
 
-    obj_shape_path = os.path.join(obj_path, obj_name, "align")
-    obj_files = os.listdir(obj_shape_path)
-    try:
-        obj_file = [f for f in obj_files if f.endswith(".obj")][0]
-    except:
-        obj_file = [f for f in obj_files if f.endswith(".ply")][0]
-    obj_shape_path = os.path.join(obj_shape_path, obj_file)
+    
+    visual_path = os.path.join(obj_shape_path, visual_file)
+    collision_path = os.path.join(obj_shape_path, collision_file)
 
     original_rot_quat = R.from_matrix(original_rot).as_quat()
 
 
     visual_shape = p.createVisualShape(
         shapeType=p.GEOM_MESH,
-        fileName=obj_shape_path,
+        fileName=visual_path,
         rgbaColor=[1, 1, 1, 1],
         specularColor=[0.4, .4, 0],
         visualFramePosition=shift,
@@ -84,7 +96,7 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
 
     collision_shape = p.createCollisionShape(
         shapeType=p.GEOM_MESH,
-        fileName=obj_shape_path,
+        fileName=collision_path,
         collisionFramePosition=shift,
         meshScale=scale
     )
@@ -171,19 +183,19 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
     #     plt.plot(gt_trans[:, i], label=f"gt_pos_{axis}")
     #     plt.plot(predict_trans[:, i], label=f"predict_pos_{axis}")
     #     plt.legend()
-    #     plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_pos_{axis}.png")
+    #     plt.savefig(f"sim_images/{id_str}_{mode}_pos_{axis}.png")
     #     plt.cla()
     
     # plt.plot(cos_sim, label="cos_sim")
     # plt.legend()
-    # plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_cos_sim.png")
+    # plt.savefig(f"sim_images/{id_str}_{mode}_cos_sim.png")
     # plt.cla()
 
     # plt.plot(mag1, label="gt_mag")
     # plt.plot(mag2, label="predict_mag")
     # plt.legend()
-    # plt.savefig(f"sim_images/{seq_id}_{timestamp}_{cam_name}_{mode}_mag.png")
+    # plt.savefig(f"sim_images/{id_str}_{mode}_mag.png")
     # plt.cla()
-    # print(trans_loss)
+    #print(trans_loss)
 
     return trans_loss, rot_loss

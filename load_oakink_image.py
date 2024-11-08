@@ -93,84 +93,86 @@ obj_dict = {}
 min_batch_idx = 0
 max_batch_idx = 1
 
-for batch_idx, batch in enumerate(test_loader):
-    if batch_idx < min_batch_idx:
-        continue
-    if batch_idx > max_batch_idx:
-        break
-    target_vel = batch['target_vel']
-    target_omega = batch['target_omega']
-    target_acc = batch['target_acc']
-    target_beta = batch['target_beta']
-    target_obj_transf = batch['obj_transf']
-    target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
-    predict = model(batch)
-    predict_6d = predict['HybridBaseline']['box_kin_12d']
-    predict_vel = predict_6d[:, 0:3]
-    predict_omega = predict_6d[:, 3:6]
-    predict_acc = predict_6d[:, 6:9]
-    predict_beta = predict_6d[:, 9:12]
+with torch.no_grad():
 
-    corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
-    prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
-    next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
-    box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
-    prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
-    next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
-    fps = 30
-    vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
-    vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
-    acc = (vel2 - vel1) * fps
-    beta = (omega2 - omega1) * fps
-    if predict_pos2vel is None:
-        predict_pos2vel = vel1
-        predict_pos2omega = omega1
-        predict_pos2acc = acc
-        predict_pos2beta = beta
-    else:
-        predict_pos2vel = torch.cat((predict_pos2vel, vel1), dim=0)
-        predict_pos2omega = torch.cat((predict_pos2omega, omega1), dim=0)
-        predict_pos2acc = torch.cat((predict_pos2acc, acc), dim=0)
-        predict_pos2beta = torch.cat((predict_pos2beta, beta), dim=0)
+    for batch_idx, batch in enumerate(test_loader):
+        if batch_idx < min_batch_idx:
+            continue
+        if batch_idx > max_batch_idx:
+            break
+        target_vel = batch['target_vel']
+        target_omega = batch['target_omega']
+        target_acc = batch['target_acc']
+        target_beta = batch['target_beta']
+        target_obj_transf = batch['obj_transf']
+        target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
+        predict = model(batch)
+        predict_6d = predict['HybridBaseline']['box_kin_12d']
+        predict_vel = predict_6d[:, 0:3]
+        predict_omega = predict_6d[:, 3:6]
+        predict_acc = predict_6d[:, 6:9]
+        predict_beta = predict_6d[:, 9:12]
 
-    #obj_id = batch["obj_idx"].detach().cpu().numpy()
-    #grasp_idx = batch['grasp_idx']
-    if target_data is None:
-        target_data = target_6d
-        predict_data = predict_6d
-    else:
-        target_data = torch.cat((target_data, target_6d), dim=0)
-        predict_data = torch.cat((predict_data, predict_6d), dim=0)
-    
-    #label_paths = batch["label_path"]
-    #print(label_paths)
+        corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
+        prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]
+        next_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2+1]
+        box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
+        prev_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2-1]
+        next_box_rot_6d = predict['HybridBaseline']["box_rot_6d_list"][frame_num//2+1]
+        fps = 30
+        vel1, omega1 = compute_velocity_and_omega(prev_corner_3d_abs, corner_3d_abs, prev_box_rot_6d, box_rot_6d, fps)
+        vel2, omega2 = compute_velocity_and_omega(corner_3d_abs, next_corner_3d_abs, box_rot_6d, next_box_rot_6d, fps)
+        acc = (vel2 - vel1) * fps
+        beta = (omega2 - omega1) * fps
+        if predict_pos2vel is None:
+            predict_pos2vel = vel1
+            predict_pos2omega = omega1
+            predict_pos2acc = acc
+            predict_pos2beta = beta
+        else:
+            predict_pos2vel = torch.cat((predict_pos2vel, vel1), dim=0)
+            predict_pos2omega = torch.cat((predict_pos2omega, omega1), dim=0)
+            predict_pos2acc = torch.cat((predict_pos2acc, acc), dim=0)
+            predict_pos2beta = torch.cat((predict_pos2beta, beta), dim=0)
 
-    _predict_pos, _predict_quat = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
-    predict_pos = np.append(predict_pos, _predict_pos, axis=0)
-    predict_quat = np.append(predict_quat, _predict_quat, axis=0)
-    for i, obj_transf in enumerate(target_obj_transf):
-        trans = target_obj_transf[i, :3, 3].detach().cpu().numpy()
-        rot = target_obj_transf[i, :3, 0:3].detach().cpu().numpy()
-        quat = R.from_matrix(rot).as_quat()
-        trans = np.expand_dims(trans, axis=0)
-        quat = np.expand_dims(quat, axis=0)
-        #print(trans.shape, quat.shape)
-        gt_pos = np.append(gt_pos, trans, axis=0)
-        gt_quat = np.append(gt_quat, quat, axis=0)
-    # info_strs = batch["info_str"]
-    # for i, info_str in enumerate(info_strs):
-    #     print(info_str)
-    #     seq_id = info_str.split("__")[0]
-    #     timestamp = info_str.split("__")[1]
-    #     cam_name = info_str.split("__")[4]
-    #     frame_id = info_str.split("__")[3]
-    #     final_save_dir = os.path.join(save_path, seq_id, timestamp)
-    #     save_file_name = f"{cam_name}_{frame_id}_predict.npz"
-    #     if not os.path.exists(final_save_dir):
-    #         os.makedirs(final_save_dir)
-    #     final_save_path = os.path.join(final_save_dir, save_file_name)
-        #np.savez(final_save_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy())
-    #print(f"save success: batch_idx: {batch_idx}")
+        #obj_id = batch["obj_idx"].detach().cpu().numpy()
+        #grasp_idx = batch['grasp_idx']
+        if target_data is None:
+            target_data = target_6d
+            predict_data = predict_6d
+        else:
+            target_data = torch.cat((target_data, target_6d), dim=0)
+            predict_data = torch.cat((predict_data, predict_6d), dim=0)
+        
+        #label_paths = batch["label_path"]
+        #print(label_paths)
+
+        _predict_pos, _predict_quat = compute_pos_and_rot(corner_3d_abs, box_rot_6d)
+        predict_pos = np.append(predict_pos, _predict_pos, axis=0)
+        predict_quat = np.append(predict_quat, _predict_quat, axis=0)
+        for i, obj_transf in enumerate(target_obj_transf):
+            trans = target_obj_transf[i, :3, 3].detach().cpu().numpy()
+            rot = target_obj_transf[i, :3, 0:3].detach().cpu().numpy()
+            quat = R.from_matrix(rot).as_quat()
+            trans = np.expand_dims(trans, axis=0)
+            quat = np.expand_dims(quat, axis=0)
+            #print(trans.shape, quat.shape)
+            gt_pos = np.append(gt_pos, trans, axis=0)
+            gt_quat = np.append(gt_quat, quat, axis=0)
+        # info_strs = batch["info_str"]
+        # for i, info_str in enumerate(info_strs):
+        #     print(info_str)
+        #     seq_id = info_str.split("__")[0]
+        #     timestamp = info_str.split("__")[1]
+        #     cam_name = info_str.split("__")[4]
+        #     frame_id = info_str.split("__")[3]
+        #     final_save_dir = os.path.join(save_path, seq_id, timestamp)
+        #     save_file_name = f"{cam_name}_{frame_id}_predict.npz"
+        #     if not os.path.exists(final_save_dir):
+        #         os.makedirs(final_save_dir)
+        #     final_save_path = os.path.join(final_save_dir, save_file_name)
+            #np.savez(final_save_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy())
+        #print(f"save success: batch_idx: {batch_idx}")
 
 predict_frompos = torch.cat((predict_pos2vel, predict_pos2omega, predict_pos2acc, predict_pos2beta), dim=1)
 
