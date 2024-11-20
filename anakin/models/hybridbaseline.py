@@ -37,11 +37,14 @@ class HybridBaseline(nn.Module):
 
         self.hybrid_head = build_head(cfg["HYBRID_HEAD"], default_args=cfg["DATA_PRESET"])  # IntegralDeconvHead
 
-        self.box_head_kin = build_model(cfg["BOX_HEAD_KIN"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
+        self.box_head_kin1 = build_model(cfg["BOX_HEAD_KIN1"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
+
+        self.box_head_kin2 = build_model(cfg["BOX_HEAD_KIN2"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
 
         self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
 
         self.init_weights(pretrained=cfg["PRETRAINED"])
+
         logger.info(f"{type(self).__name__} uses center_idx {self.center_idx}")
         logger.info(f"{type(self).__name__} has {param_size(self)}M parameters")
     
@@ -68,7 +71,10 @@ class HybridBaseline(nn.Module):
         pose_results_list = []
         for i in range(self.frame_num):
             pose_results_list.append(self.hybrid_head(feature = features_list[i]["res_layer4"]))
-        
+
+        # box_rot_6d_list = []
+        # for i in range(self.frame_num):
+        #     box_rot_6d_list.append(self.box_head_pose(torch.cat((features_list[i]["res_layer4_mean"], box_kin_12d), dim=1)))
         box_rot_6d_list = []
         for i in range(self.frame_num):
             box_rot_6d_list.append(self.box_head_pose(features_list[i]["res_layer4_mean"]))
@@ -77,7 +83,15 @@ class HybridBaseline(nn.Module):
         for i in range(1, self.frame_num):
             kin_mlp_input = torch.cat((kin_mlp_input, features_list[i]["res_layer4_mean"]), dim=1)
         # kin_mlp_input = torch.cat(box_rot_6d_list, dim=1)
-        box_kin_12d = self.box_head_kin(kin_mlp_input)
+        box_kin_12d_intem = self.box_head_kin1(kin_mlp_input)
+
+        kin_mlp_input_intem = torch.cat(box_rot_6d_list, dim=1)
+        kin_mlp_input_intem = torch.cat((kin_mlp_input_intem, box_kin_12d_intem), dim=1)
+        box_kin_12d = self.box_head_kin2(kin_mlp_input_intem)
+
+        # kin_mean, kin_std = inputs[Queries.KIN_DATA_MEAN], inputs[Queries.KIN_DATA_STD]
+        # kin_mean, kin_std = kin_mean.to(kin_mlp_input.device), kin_std.to(kin_mlp_input.device)
+        # box_kin_12d_real = box_kin_12d * kin_std + kin_mean
 
         # prev_box_vel_12d = box_rot_12d_prev[:,6:18]
         # next_box_vel_12d = box_rot_12d_next[:,6:18]
@@ -104,7 +118,7 @@ class HybridBaseline(nn.Module):
         boxroot_3d_abs_list = []
         for i in range(self.frame_num):
             boxroot_3d_abs_list.append(pose_3d_abs_list[i][:, 21:22, :])
-        corners_can_3d = inputs[Queries.CORNERS_CAN].to(boxroot_3d_abs_list[self.frame_mid].device)  # TENSOR[B, 8, 3]
+        corners_can_3d = inputs[Queries.CORNERS_CAN].to(boxroot_3d_abs_list[0].device)  # TENSOR[B, 8, 3]
         box_rot_rotmat_list = []
         for i in range(self.frame_num):
             box_rot_rotmat_list.append(compute_rotation_matrix_from_ortho6d(box_rot_6d_list[i]))

@@ -77,6 +77,9 @@ class Queries(metaclass=ImmutableClass):
 
     FRAME_NUM = "frame_num"
 
+    KIN_DATA_MEAN = "kin_data_mean"
+    KIN_DATA_STD = "kin_data_std"
+
 
 class SynthQueries(metaclass=ImmutableClass):
     IS_SYNTH = "is_synth"

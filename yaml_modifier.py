@@ -19,7 +19,7 @@ config["DATASET"]["TRAIN"]["SHRINK"] = False
 config["DATASET"]["TEST"]["SHRINK"] = False
 config["ARCH"]["FRAME_NUM"] = frame_num
 config["ARCH"]["PRETRAINED"] = f"checkpoints/HybridBaseline{date}.pth.tar"
-config["ARCH"]["BOX_HEAD_KIN"]["LAYERS_N"] = [frame_num * 512, 256, 128]
+config["ARCH"]["BOX_HEAD_KIN1"]["LAYERS_N"] = [frame_num * 512, 256, 128]
 
 with open(f"./config_eval/eval_{dataset}_clasbased_sym_artiboost{seq}.yaml", 'w') as file:
     yaml.safe_dump(config, file)

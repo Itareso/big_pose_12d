@@ -507,6 +507,8 @@ class HOdata(ABC):
         sample[Queries.IMAGE_LIST] = img_list
         sample[Queries.SAMPLE_IDX] = idx
 
+        
+
         sample[Queries.TARGET_VEL] = self.get_real_vel(idx)
         sample[Queries.TARGET_OMEGA] = self.get_real_omega(idx)
         sample[Queries.TARGET_ACC] = self.get_real_acc(idx)
@@ -517,6 +519,8 @@ class HOdata(ABC):
         
         if self.name == "OakInkImage":
             sample[Queries.INFO_STR] = self.get_info_str(idx)
+            
+        sample[Queries.KIN_DATA_MEAN], sample[Queries.KIN_DATA_STD] = self.get_kin_mean_std(idx)
             
         if self.frame_num >= 3:
             sample[Queries.TARGET_NEXT_VEL] = self.get_real_vel(idx, 1)

@@ -151,6 +151,7 @@ with torch.no_grad():
         omega = data["predict_omega"]
         acc = data["predict_acc"]
         beta = data["predict_beta"]
+
         if mode == "gt" or mode == "gtfromvel":
             vel = batch["target_vel"][0].detach().cpu().numpy()
             omega = batch["target_omega"][0].detach().cpu().numpy()

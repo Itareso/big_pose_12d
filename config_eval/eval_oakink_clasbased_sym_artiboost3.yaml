@@ -3,11 +3,18 @@ ARCH:
     FREEZE_BATCHNORM: false
     PRETRAINED: true
     TYPE: ResNet34
-  BOX_HEAD_KIN:
+  BOX_HEAD_KIN1:
     LAYERS_N:
-    - 2560
+    - 1536
     - 256
     - 128
+    OUT_CHANNEL: 128
+    TYPE: MLP_O
+    USE_DROPOUT: false
+  BOX_HEAD_KIN2:
+    LAYERS_N:
+    - 146
+    - 64
     OUT_CHANNEL: 12
     TYPE: MLP_O
     USE_DROPOUT: false
@@ -20,7 +27,7 @@ ARCH:
     TYPE: MLP_O
     USE_DROPOUT: false
   DIRECT: false
-  FRAME_NUM: 5
+  FRAME_NUM: 3
   HYBRID_HEAD:
     DECONV_WITH_BIAS: false
     DEPTH_RESOLUTION: 28
@@ -37,7 +44,7 @@ ARCH:
     NUM_DECONV_LAYERS: 2
     TYPE: IntegralDeconvHead
   NTASKS: 13
-  PRETRAINED: checkpoints/HybridBaseline1939.pth.tar
+  PRETRAINED: checkpoints/HybridBaseline0755.pth.tar
   PREVIOUS: []
   TYPE: HybridBaseline
 CRITERION:
@@ -45,8 +52,22 @@ CRITERION:
   LAMBDA_JOINTS_3D: 1.0
   TYPE: JointsLoss
 - TYPE: HandOrdLoss
+- TYPE: MSEVelLoss
+  USE_NORM: false
+- TYPE: MSEAccLoss
+  USE_NORM: false
 - TYPE: MSEOmegaLoss
+  USE_NORM: false
 - TYPE: MSEBetaLoss
+  USE_NORM: false
+- TYPE: VelConsistencyLoss
+  USE_NORM: false
+- TYPE: AccConsistencyLoss
+  USE_NORM: false
+- TYPE: OmegaConsistencyLoss
+  USE_NORM: false
+- TYPE: BetaConsistencyLoss
+  USE_NORM: false
 DATASET:
   TEST:
     AUG: false
@@ -55,7 +76,7 @@ DATASET:
     DATA_SPLIT: test
     ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
-    FRAME_NUM: 5
+    FRAME_NUM: 3
     SHRINK: false
     SPLIT_MODE: default
     TYPE: OakInkImage
@@ -70,7 +91,7 @@ DATASET:
     DATA_SPLIT: train
     ENABLE_HANDOVER: false
     FILTER_INVISIBLE_HAND: true
-    FRAME_NUM: 5
+    FRAME_NUM: 3
     SHRINK: false
     SPLIT_MODE: default
     TYPE: OakInkImage
@@ -115,8 +136,14 @@ EVALUATOR:
   NROW: 6
   TYPE: Vis2DMetric
 LAMBDAS:
-- 0.5
+- 1.0
 - 0.2
+- 0.01
+- 0.001
+- 0.001
+- 1.0e-06
+- 0.01
+- 0.001
 - 0.001
 - 1.0e-06
 MANAGER:
@@ -125,11 +152,11 @@ MANAGER:
   VAL_START_EPOCH: None
 TRAIN:
   BATCH_SIZE: 128
-  EPOCH: 50
+  EPOCH: 100
   EVAL_FREQ: 5
   GRAD_CLIP: 0.001
   GRAD_NORM: false
-  LR: 0.0001
+  LR: 5.0e-05
   LR_DECAY_GAMMA: 1.0
   LR_DECAY_STEP: 100
   LR_FACTOR: 0.1

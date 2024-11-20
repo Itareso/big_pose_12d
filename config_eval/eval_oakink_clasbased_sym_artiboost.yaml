@@ -46,9 +46,9 @@ DATA_PRESET:
 
 TRAIN:
   BATCH_SIZE: 128
-  EPOCH: 50
+  EPOCH: 100
   OPTIMIZER: 'adam'
-  LR: 0.0001
+  LR: 0.00005
   LR_FACTOR: 0.1
   WEIGHT_DECAY: 0.0
   LR_DECAY_STEP: 100
@@ -61,7 +61,7 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: 'checkpoints/HybridBaseline1011_3.pth.tar'
+  PRETRAINED: 'checkpoints/HybridBaseline0755.pth.tar'
   FRAME_NUM: 3
   BACKBONE:
     TYPE: ResNet34
@@ -82,9 +82,14 @@ ARCH:
       - 4
       - 4
     FINAL_CONV_KERNEL: 1
-  BOX_HEAD_KIN:
+  BOX_HEAD_KIN1:
     TYPE: MLP_O
-    LAYERS_N: [1536, 256, 128]
+    LAYERS_N: [1536, 256]
+    OUT_CHANNEL: 128
+    USE_DROPOUT: False
+  BOX_HEAD_KIN2:
+    TYPE: MLP_O
+    LAYERS_N: [146, 64]
     OUT_CHANNEL: 12
     USE_DROPOUT: False
   BOX_HEAD_POSE:
@@ -96,14 +101,28 @@ ARCH:
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.001, 0.000001]
+LAMBDAS: [1.0, 0.2, 0.01, 0.001, 0.0005, 0.0000005, 0.01, 0.001, 0.0001, 0.0000001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
     LAMBDA_CORNERS_3D: 1.0
   - TYPE: HandOrdLoss
+  - TYPE: MSEVelLoss
+    USE_NORM: False
+  - TYPE: MSEAccLoss
+    USE_NORM: False
   - TYPE: MSEOmegaLoss
+    USE_NORM: False
   - TYPE: MSEBetaLoss
+    USE_NORM: False
+  - TYPE: VelConsistencyLoss
+    USE_NORM: False
+  - TYPE: AccConsistencyLoss
+    USE_NORM: False
+  - TYPE: OmegaConsistencyLoss
+    USE_NORM: False
+  - TYPE: BetaConsistencyLoss
+    USE_NORM: False
 EVALUATOR:
   - TYPE: LossesMetric
     VIS_LOSS_KEYS: []
@@ -118,6 +137,7 @@ EVALUATOR:
     NCOL: 6
     NROW: 6
     CORNER_LINK_ORDER: [0, 1, 3, 2, 4, 5, 7, 6]
+  - TYPE: RTmetric
 
 MANAGER:
   VAL_FREQ: None

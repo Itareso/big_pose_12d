@@ -83,6 +83,7 @@ def get_vel_and_omega_from_preds(preds):
 class VelConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(VelConsistencyLoss, self).__init__()
+        self.use_norm = cfg.get("USE_NORM", False)
 
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
@@ -97,6 +98,11 @@ class VelConsistencyLoss(TensorLoss):
             vel_mid = (vel1 + vel2) / 2
         vel_predict = preds["box_kin_12d"][:, 0:3]
 
+        vel_mean, vel_std = targs[Queries.KIN_DATA_MEAN][:,:3], targs[Queries.KIN_DATA_STD][:,:3]
+        vel_mean, vel_std = vel_mean.to(final_loss.device), vel_std.to(final_loss.device)
+        if self.use_norm:
+            vel_mid = (vel_mid - vel_mean) / vel_std
+
         vel_loss = torch_f.mse_loss(vel_mid, vel_predict).float()
         final_loss += vel_loss
 
@@ -110,6 +116,7 @@ class OmegaConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(OmegaConsistencyLoss, self).__init__()
         self.exist_model_info = True
+        self.use_norm = cfg.get("USE_NORM", False)
         try:
             model_info_path = cfg["MODEL_INFO_PATH"]
         except:
@@ -141,6 +148,11 @@ class OmegaConsistencyLoss(TensorLoss):
         else:
             omega_predict_mask = omega_predict
             omega_mid_mask = omega_mid
+        
+        omega_mean, omega_std = targs[Queries.KIN_DATA_MEAN][:,3:6], targs[Queries.KIN_DATA_STD][:,3:6]
+        omega_mean, omega_std = omega_mean.to(final_loss.device), omega_std.to(final_loss.device)
+        if self.use_norm:
+            omega_mid_mask = (omega_mid_mask - omega_mean) / omega_std
 
         omega_loss = torch_f.mse_loss(omega_mid_mask, omega_predict_mask).float()
         final_loss += omega_loss
@@ -154,6 +166,7 @@ class OmegaConsistencyLoss(TensorLoss):
 class AccConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(AccConsistencyLoss, self).__init__()
+        self.use_norm = cfg.get("USE_NORM", False)
 
         logger.info(f"Construct {type(self).__name__} with lambda: ")
 
@@ -168,6 +181,11 @@ class AccConsistencyLoss(TensorLoss):
             acc_mid = (vel2 - vel1) * 30
         acc_predict = preds["box_kin_12d"][:, 6:9]
 
+        acc_mean, acc_std = targs[Queries.KIN_DATA_MEAN][:,6:9], targs[Queries.KIN_DATA_STD][:,6:9]
+        acc_mean, acc_std = acc_mean.to(final_loss.device), acc_std.to(final_loss.device)
+        if self.use_norm:
+            acc_mid = (acc_mid - acc_mean) / acc_std
+
         acc_loss = torch_f.mse_loss(acc_mid, acc_predict).float()
         final_loss += acc_loss
 
@@ -180,6 +198,7 @@ class AccConsistencyLoss(TensorLoss):
 class BetaConsistencyLoss(TensorLoss):
     def __init__(self, **cfg):
         super(BetaConsistencyLoss, self).__init__()
+        self.use_norm = cfg.get("USE_NORM", False)
 
         self.exist_model_info = True
         try:
@@ -213,6 +232,11 @@ class BetaConsistencyLoss(TensorLoss):
         else:
             beta_predict_mask = beta_predict
             beta_mid_mask = beta_mid
+        
+        beta_mean, beta_std = targs[Queries.KIN_DATA_MEAN][:,9:12], targs[Queries.KIN_DATA_STD][:,9:12]
+        beta_mean, beta_std = beta_mean.to(final_loss.device), beta_std.to(final_loss.device)
+        if self.use_norm:
+            beta_mid_mask = (beta_mid_mask - beta_mean) / beta_std
 
         beta_loss = torch_f.mse_loss(beta_mid_mask, beta_predict_mask).float()
         final_loss += beta_loss

@@ -107,14 +107,14 @@ class OakInkImage(HOdata):
                 "data_split": self._data_split,
                 "split_mode": self._mode_split,
                 "frame_num": self.frame_num,
-                "cache_version": 8
+                "cache_version": 10
             }
         else:
             self.cache_identifier_dict = {
                 "data_split": self._data_split,
                 "split_mode": self._mode_split,
                 "frame_num": self.frame_num,
-                "cache_version": 8,
+                "cache_version": 10,
                 "shrink": True
             }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
@@ -122,6 +122,15 @@ class OakInkImage(HOdata):
         self.cache_path = os.path.join("common", "cache", self._name, "{}.pkl".format(self.cache_identifier))
 
         self._data_dir = cfg["DATA_ROOT"]
+
+        self.framedata_color_name = [
+            "north_east_color",
+            "south_east_color",
+            "north_west_color",
+            "south_west_color",
+        ]
+
+        kin_12d = np.array([], dtype = np.float32)
 
         if self.use_cache and os.path.exists(self.cache_path):
             with open(self.cache_path, "rb") as p_f:
@@ -183,6 +192,36 @@ class OakInkImage(HOdata):
                 pickle.dump(self.info_list, p_f)
             logger.info(f"Wrote cache for {self._name}_{self._data_split}_{self._mode_split} to {self.cache_path}")
 
+
+        self.kin_data_mean = np.array([
+            0.004964285072180129,
+            -0.04340239576210209,
+            -0.025245344385394792,
+            -0.0015919059974075298,
+            0.008139704138168903,
+            0.007970978270282175,
+            -0.00038011602648672807,
+            0.005370055181611238,
+            0.00302158090323952,
+            -0.0009021801645863477,
+            0.014445737363689712,
+            0.00987808766404786
+        ], dtype=np.float32)
+        self.kin_data_std = np.array([
+            0.08020073314333324,
+            0.12966155227150855,
+            0.0971261677796225,
+            1.0046501865828805,
+            0.6645017972367884,
+            0.8611179192138396,
+            1.2719581556912962,
+            2.2062332516833703,
+            1.6062203993545816,
+            20.25636187859273,
+            14.39653727526868,
+            17.78791529775553
+        ], dtype=np.float32)
+
         self.info_str_list = []
         for info in self.info_list:
             info_str = "__".join([str(x) for x in info])
@@ -200,13 +239,6 @@ class OakInkImage(HOdata):
             obj_model = load_object(obj_root, obj_fn)
             self.obj_mapping[obj_id] = obj_model
 
-        self.framedata_color_name = [
-            "north_east_color",
-            "south_east_color",
-            "north_west_color",
-            "south_west_color",
-        ]
-
         self._image_size = (848, 480)  # (W, H)
         self._hand_side = "right"
 
@@ -221,8 +253,7 @@ class OakInkImage(HOdata):
         else:
             self.handover_info, self.handover_sample_index_list = None, None
             self.handover_info_list = None
-        
-        
+ 
 
     def __len__(self):
         return len(self.info_list)
@@ -512,6 +543,20 @@ class OakInkImage(HOdata):
         data = np.load(save_path)
         beta = data["angacc"]
         return beta.astype(np.float32)
+    
+    def get_kin_from_info(self, info):
+        offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"
+        save_path = os.path.join(savedir, info[0], offset)
+        data = np.load(save_path)
+        vel = data["vel"]
+        acc = data["acc"]
+        omega = data["angvel"]
+        beta = data["angacc"]
+        kin = np.concatenate((vel, omega, acc, beta))
+        return kin.astype(np.float32)
+    
+    def get_kin_mean_std(self, idx):
+        return self.kin_data_mean, self.kin_data_std
     
     def get_frame_num(self):
         return self.frame_num

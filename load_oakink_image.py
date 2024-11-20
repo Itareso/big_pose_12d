@@ -105,9 +105,12 @@ with torch.no_grad():
         target_acc = batch['target_acc']
         target_beta = batch['target_beta']
         target_obj_transf = batch['obj_transf']
+        data_mean, data_std = batch["kin_data_mean"], batch["kin_data_std"]
         target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
         predict = model(batch)
         predict_6d = predict['HybridBaseline']['box_kin_12d']
+        data_mean, data_std = data_mean.to(predict_6d.device), data_std.to(predict_6d.device)
+        predict_6d = predict_6d * data_std + data_mean
         predict_vel = predict_6d[:, 0:3]
         predict_omega = predict_6d[:, 3:6]
         predict_acc = predict_6d[:, 6:9]

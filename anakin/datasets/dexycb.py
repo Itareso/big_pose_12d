@@ -54,6 +54,35 @@ class DexYCB(HOdata):
 
         self.load_dataset()
 
+        self.kin_data_mean = np.array([
+            0.0004009862672820685,
+            -0.02361021239343654,
+            -0.014166656120099874,
+            -0.0009011238928483079,
+            0.005055928211095715,
+            0.0025950672520647063,
+            4.5929990301965004e-05,
+            -0.0011434052731147146,
+            -0.0006999427479890672,
+            4.627443328262859e-06,
+            0.0011830800240229188,
+            0.0013455641357115137
+        ], dtype=np.float32)
+        self.kin_data_std = np.array([
+            0.0533134149082464,
+            0.1008420281546166,
+            0.07911555791443903,
+            0.7076437640973302,
+            0.5524635698548357,
+            0.6330808530470479,
+            0.5827248845695574,
+            0.6986032959037445,
+            0.6360683086786654,
+            21.26456940450006,
+            17.630614300232125,
+            19.237993090187
+        ], dtype=np.float32)
+
     def _preload(self):
         self.name = "DexYCB"
         self.root = os.path.join(self.data_root, self.name)
@@ -67,7 +96,7 @@ class DexYCB(HOdata):
             "use_left_hand": self.use_left_hand,
             "filter_invisible_hand": self.filter_invisible_hand,
             "frame_num": self.frame_num,
-            "cache_version": 0
+            "cache_version": 1
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
@@ -419,3 +448,6 @@ class DexYCB(HOdata):
     def get_grasp_idx(self, idx):
         sample = self.dataset[idx]
         return sample["ycb_grasp_ind"]
+    
+    def get_kin_mean_std(self, idx):
+        return self.kin_data_mean, self.kin_data_std

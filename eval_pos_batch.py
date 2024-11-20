@@ -2,8 +2,7 @@ import sys, os
 import subprocess
 
 names = [
-    ("1931", "3", "True"),
-    ("1939", "5", "False"),
+    ("0755", "3", "False"),
 ]
 
 dataset = "oakink"
