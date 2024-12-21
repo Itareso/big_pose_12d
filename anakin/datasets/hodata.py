@@ -519,6 +519,20 @@ class HOdata(ABC):
         
         if self.name == "OakInkImage":
             sample[Queries.INFO_STR] = self.get_info_str(idx)
+        
+            # sample[Queries.PRED_TRANS_LIST] = []
+            # sample[Queries.PRED_ROT_LIST] = []
+            # sample[Queries.PRED_VEL_LIST] = []
+            # sample[Queries.PRED_OMEGA_LIST] = []
+            # for i in [-1, 0, 1]:
+            #     sample[Queries.PRED_TRANS_LIST].append(self.get_pred_trans(idx, i))
+            #     sample[Queries.PRED_ROT_LIST].append(self.get_pred_rot(idx, i))
+            #     sample[Queries.PRED_VEL_LIST].append(self.get_pred_vel(idx, i))
+            #     sample[Queries.PRED_OMEGA_LIST].append(self.get_pred_omega(idx, i))
+            # sample[Queries.PRED_TRANS_LIST] = np.array(sample[Queries.PRED_TRANS_LIST])
+            # sample[Queries.PRED_ROT_LIST] = np.array(sample[Queries.PRED_ROT_LIST])
+            # sample[Queries.PRED_VEL_LIST] = np.array(sample[Queries.PRED_VEL_LIST])
+            # sample[Queries.PRED_OMEGA_LIST] = np.array(sample[Queries.PRED_OMEGA_LIST])
             
         sample[Queries.KIN_DATA_MEAN], sample[Queries.KIN_DATA_STD] = self.get_kin_mean_std(idx)
             

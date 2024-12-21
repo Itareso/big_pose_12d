@@ -7,6 +7,7 @@ from .symcornerloss import SymCornerLoss
 from .mseloss import MSEVelLoss, MSEAccLoss, MSEOmegaLoss, MSEBetaLoss
 from .consistencyloss import AccConsistencyLoss, BetaConsistencyLoss
 from .seploss import VelCosLoss, VelMagLoss, AccCosLoss, AccMagLoss
+from .refineloss import RefineLoss
 
 __all__ = [
     "JointsLoss",
@@ -29,4 +30,5 @@ __all__ = [
     "OmegaConsistencyLoss",
     "AccConsistencyLoss",
     "BetaConsistencyLoss",
+    "RefineLoss",
 ]

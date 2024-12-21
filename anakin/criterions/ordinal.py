@@ -260,7 +260,7 @@ class SceneOrdLoss(TensorLoss):
     def __call__(self, preds: Dict, targs: Dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
         batch_size = preds["joints_3d_abs"].shape[0]
         pred_joints_3d_abs = preds["joints_3d_abs"]
-        pred_corners_3d_abs = preds["corners_3d_abs"]
+        pred_corners_3d_abs = preds["corners_3d_abs_ori"]
         device = pred_joints_3d_abs.device
 
         joints_3d = targs[Queries.JOINTS_3D].to(device)

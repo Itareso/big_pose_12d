@@ -44,7 +44,7 @@ ARCH:
     NUM_DECONV_LAYERS: 2
     TYPE: IntegralDeconvHead
   NTASKS: 13
-  PRETRAINED: checkpoints/HybridBaseline1929.pth.tar
+  PRETRAINED: checkpoints/HybridBaseline1517.pth.tar
   PREVIOUS: []
   TYPE: HybridBaseline
 CRITERION:
@@ -55,7 +55,7 @@ CRITERION:
 - TYPE: HandOrdLoss
 - TYPE: MSEVelLoss
 - TYPE: MSEAccLoss
-- TYPE: VelConsistencyLoss
+- TYPE: MSEOmegaLoss
 DATASET:
   TEST:
     AUG: false
@@ -129,7 +129,7 @@ LAMBDAS:
 - 0.2
 - 0.01
 - 1.0e-05
-- 0.005
+- 0.001
 MANAGER:
   EPOCH: None
   VAL_FREQ: None

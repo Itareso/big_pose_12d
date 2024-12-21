@@ -42,6 +42,18 @@ class MSEVelLoss(TensorLoss):
         if self.use_norm:
             vel_real = (vel_real - vel_mean) / vel_std
         loss_vel = torch_f.mse_loss(vel_predict, vel_real).float()
+        vel_pred_x = vel_predict[:, 0]
+        vel_pred_y = vel_predict[:, 1]
+        vel_pred_z = vel_predict[:, 2]
+        vel_real_x = vel_real[:, 0]
+        vel_real_y = vel_real[:, 1]
+        vel_real_z = vel_real[:, 2]
+        loss_vel_x = torch_f.mse_loss(vel_pred_x, vel_real_x).float()
+        loss_vel_y = torch_f.mse_loss(vel_pred_y, vel_real_y).float()
+        loss_vel_z = torch_f.mse_loss(vel_pred_z, vel_real_z).float()
+        losses["mse_vel_loss_x"] = loss_vel_x
+        losses["mse_vel_loss_y"] = loss_vel_y
+        losses["mse_vel_loss_z"] = loss_vel_z
         final_loss += loss_vel
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -110,6 +122,18 @@ class MSEAccLoss(TensorLoss):
         if self.use_norm:
             acc_real = (acc_real - acc_mean) / acc_std
         loss_acc = torch_f.mse_loss(acc_predict, acc_real).float()
+        acc_pred_x = acc_predict[:, 0]
+        acc_pred_y = acc_predict[:, 1]
+        acc_pred_z = acc_predict[:, 2]
+        acc_real_x = acc_real[:, 0]
+        acc_real_y = acc_real[:, 1]
+        acc_real_z = acc_real[:, 2]
+        loss_acc_x = torch_f.mse_loss(acc_pred_x, acc_real_x).float()
+        loss_acc_y = torch_f.mse_loss(acc_pred_y, acc_real_y).float()
+        loss_acc_z = torch_f.mse_loss(acc_pred_z, acc_real_z).float()
+        losses["mse_acc_loss_x"] = loss_acc_x
+        losses["mse_acc_loss_y"] = loss_acc_y
+        losses["mse_acc_loss_z"] = loss_acc_z
         final_loss += loss_acc
 
         # <<

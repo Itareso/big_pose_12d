@@ -30,6 +30,8 @@ ALL_INTENT_REV = {_v: _k for _k, _v in ALL_INTENT.items()}
 
 savedir = "/mnt/homes/zhushengjia/OakInkDiffNew"
 
+pred_savedir = "/mnt/homes/zhushengjia/OakInkPred"
+predkin_savedir = "/mnt/homes/zhushengjia/OakInkDiffPred"
 
 def decode_seq_cat(seq_cat):
     field_list = seq_cat.split("_")
@@ -95,6 +97,7 @@ class OakInkImage(HOdata):
         self._mode_split = cfg["SPLIT_MODE"]
         self._enable_handover = cfg["ENABLE_HANDOVER"]
         self.frame_num = cfg.get("FRAME_NUM", 3)
+        self.seq_size = cfg.get("SEQ_SIZE", 1)
         self.shrink = cfg.get("SHRINK", False)
         if self._enable_handover:
             assert self._data_split == "all", "handover need to be enabled in all split"
@@ -107,14 +110,14 @@ class OakInkImage(HOdata):
                 "data_split": self._data_split,
                 "split_mode": self._mode_split,
                 "frame_num": self.frame_num,
-                "cache_version": 10
+                "cache_version": 16
             }
         else:
             self.cache_identifier_dict = {
                 "data_split": self._data_split,
                 "split_mode": self._mode_split,
                 "frame_num": self.frame_num,
-                "cache_version": 10,
+                "cache_version": 16,
                 "shrink": True
             }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
@@ -543,6 +546,54 @@ class OakInkImage(HOdata):
         data = np.load(save_path)
         beta = data["angacc"]
         return beta.astype(np.float32)
+    
+    def get_pred_trans(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(pred_savedir, info[0], offset)
+        data = np.load(save_path)
+        trans = data["pred_trans"]
+        return trans.astype(np.float32)
+
+    def get_pred_rot(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(pred_savedir, info[0], offset)
+        data = np.load(save_path)
+        rot = data["pred_rot"]
+        return rot.astype(np.float32)
+    
+    def get_pred_corner(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(pred_savedir, info[0], offset)
+        data = np.load(save_path)
+        corner = data["pred_corner"]
+        return corner.astype(np.float32)
+    
+    def get_pred_boxrot(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(pred_savedir, info[0], offset)
+        data = np.load(save_path)
+        boxrot = data["pred_boxrot"]
+        return boxrot.astype(np.float32)
+
+    def get_pred_vel(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(predkin_savedir, info[0], offset)
+        data = np.load(save_path)
+        boxrot = data["vel"]
+        return boxrot.astype(np.float32)
+
+    def get_pred_omega(self, idx, seq = 0):
+        info = self.info_list[idx]
+        offset = f"{info[3]}_{info[2] + seq}_predict.npz"
+        save_path = os.path.join(predkin_savedir, info[0], offset)
+        data = np.load(save_path)
+        boxrot = data["angvel"]
+        return boxrot.astype(np.float32)
     
     def get_kin_from_info(self, info):
         offset = f"{self.framedata_color_name[info[3]]}_{info[2]}.npz"

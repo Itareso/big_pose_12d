@@ -18,6 +18,7 @@ class SymCornerLoss(TensorLoss):
     def __init__(self, **cfg):
         super(SymCornerLoss, self).__init__()
         self.lambda_sym_corners_3d = cfg.get("LAMBDA_SYM_CORNERS_3D", 0.0)
+        self.lambda_sym_corners_new = cfg.get("LAMBDA_SYM_CORNERS_NEW", 0.0)
 
         self.exist_model_info = True
         # region pre-compute sym transf
@@ -123,6 +124,49 @@ class SymCornerLoss(TensorLoss):
         else:
             sym_corners_3d_loss = None
         losses["sym_corners_3d_loss"] = sym_corners_3d_loss
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        # ============== OBJ CORNERS 3D MSE LOSS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        if self.lambda_sym_corners_new:
+            
+            sym_corners_3d_new_loss = torch.tensor(0.0, device=final_loss.device)
+            corner_can = targs[Queries.CORNERS_CAN].to(final_loss.device)
+            obj_transf = targs[Queries.OBJ_TRANSF].to(final_loss.device)
+            corners_vis = targs[Queries.CORNERS_VIS].to(final_loss.device)
+            pred_corners_3d_abs_new = preds["corners_3d_abs_new"]
+
+            if not self.use_ho3d_ycb:
+                sym_corner_can = (torch.einsum("bkmn,bcn->bkmc", sym_R, corner_can) + sym_t).transpose(
+                    -2, -1
+                )  # [B, max_sym_len, NCORNERS, 3]
+            else:
+                cam_extr = torch.tensor(
+                    [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=torch.float32, device=final_loss.device
+                )
+                sym_corner_can = (
+                    cam_extr @ (torch.einsum("bkmn,bnc->bkmc", sym_R, cam_extr @ corner_can.transpose(-2, -1)) + sym_t)
+                ).transpose(-2, -1)
+
+            sym_corner_3d_abs = (
+                torch.einsum("bij,bklj->bkil", obj_transf[:, :3, :3], sym_corner_can) + obj_transf[:, None, :3, 3:]
+            ).transpose(
+                -2, -1
+            )  # [B, max_sym_len, NCORNERS, 3]
+
+            # mask invisible corners
+            corners_vis_mask = corners_vis.to(final_loss.device)
+
+            pred_corners_3d_abs_new = torch.einsum("bij,bi->bij", pred_corners_3d_abs_new, corners_vis_mask)
+
+            sym_corners_3d_abs = torch.einsum("bkij,bi->bkij", sym_corner_3d_abs, corners_vis_mask)
+
+            sym_corners_3d_new_loss += (
+                ((sym_corners_3d_abs - pred_corners_3d_abs_new[:, None, :, :]) ** 2).mean(-1).mean(-1).min(dim=-1)[0].mean()
+            )
+
+            final_loss += self.lambda_sym_corners_new * sym_corners_3d_new_loss
+        else:
+            sym_corners_3d_new_loss = None
+        losses["sym_corners_3d_new_loss"] = sym_corners_3d_new_loss
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         losses[self.output_key] = final_loss

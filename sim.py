@@ -196,6 +196,6 @@ def eval_object_pos(obj_name, acc_list, beta_list, gt_trans,
     # plt.legend()
     # plt.savefig(f"sim_images/{id_str}_{mode}_mag.png")
     # plt.cla()
-    #print(trans_loss)
+    print(trans_loss)
 
     return trans_loss, rot_loss

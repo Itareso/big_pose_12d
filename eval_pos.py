@@ -157,6 +157,7 @@ with torch.no_grad():
             omega = batch["target_omega"][0].detach().cpu().numpy()
             acc = batch["target_acc"][0]
             beta = batch["target_beta"][0]
+        print(acc, batch["target_acc"][0])
 
         corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
         box_rot_6d = predict['HybridBaseline']["box_rot_6d"]

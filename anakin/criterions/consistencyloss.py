@@ -102,8 +102,11 @@ class VelConsistencyLoss(TensorLoss):
         vel_mean, vel_std = vel_mean.to(final_loss.device), vel_std.to(final_loss.device)
         if self.use_norm:
             vel_mid = (vel_mid - vel_mean) / vel_std
+        
+        vel_real = targs[Queries.TARGET_VEL].to(final_loss.device)
 
         vel_loss = torch_f.mse_loss(vel_mid, vel_predict).float()
+        # vel_loss = torch_f.mse_loss(vel_mid, vel_real).float()
         final_loss += vel_loss
 
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

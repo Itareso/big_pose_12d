@@ -80,6 +80,11 @@ class Queries(metaclass=ImmutableClass):
     KIN_DATA_MEAN = "kin_data_mean"
     KIN_DATA_STD = "kin_data_std"
 
+    PRED_TRANS_LIST = "pred_trans_list"
+    PRED_ROT_LIST = "pred_rot_list"
+    PRED_VEL_LIST = "pred_vel_list"
+    PRED_OMEGA_LIST = "pred_omega_list"
+
 
 class SynthQueries(metaclass=ImmutableClass):
     IS_SYNTH = "is_synth"

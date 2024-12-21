@@ -8,7 +8,7 @@ import torch.nn as nn
 from anakin.utils.builder import HEAD, MODEL, build_backbone, build_head, build_model
 from anakin.utils.logger import logger
 from anakin.utils.misc import enable_lower_param, param_size
-from ..utils.transform import batch_uvd2xyz, compute_rotation_matrix_from_ortho6d
+from ..utils.transform import batch_uvd2xyz, compute_rotation_matrix_from_ortho6d, aa_to_rotmat, rotmat_to_rot6d
 from anakin.datasets.hoquery import Queries
 from anakin.utils.misc import CONST
 from .simplebaseline import IntegralDeconvHead, norm_heatmap, integral_heatmap3d
@@ -40,6 +40,9 @@ class HybridBaseline(nn.Module):
         self.box_head_kin1 = build_model(cfg["BOX_HEAD_KIN1"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
 
         self.box_head_kin2 = build_model(cfg["BOX_HEAD_KIN2"], default_args=cfg["DATA_PRESET"])  # box_head, mlp
+
+        #self.box_head_kin3 = build_model(cfg["BOX_HEAD_KIN3"], default_args=cfg["DATA_PRESET"])
+        self.refine_net = build_model(cfg["REFINE_NET"], default_args=cfg["DATA_PRESET"])
 
         self.box_head_pose = build_model(cfg["BOX_HEAD_POSE"], default_args=cfg["DATA_PRESET"])
 
@@ -84,17 +87,6 @@ class HybridBaseline(nn.Module):
             kin_mlp_input = torch.cat((kin_mlp_input, features_list[i]["res_layer4_mean"]), dim=1)
         # kin_mlp_input = torch.cat(box_rot_6d_list, dim=1)
         box_kin_12d_intem = self.box_head_kin1(kin_mlp_input)
-
-        kin_mlp_input_intem = torch.cat(box_rot_6d_list, dim=1)
-        kin_mlp_input_intem = torch.cat((kin_mlp_input_intem, box_kin_12d_intem), dim=1)
-        box_kin_12d = self.box_head_kin2(kin_mlp_input_intem)
-
-        # kin_mean, kin_std = inputs[Queries.KIN_DATA_MEAN], inputs[Queries.KIN_DATA_STD]
-        # kin_mean, kin_std = kin_mean.to(kin_mlp_input.device), kin_std.to(kin_mlp_input.device)
-        # box_kin_12d_real = box_kin_12d * kin_std + kin_mean
-
-        # prev_box_vel_12d = box_rot_12d_prev[:,6:18]
-        # next_box_vel_12d = box_rot_12d_next[:,6:18]
         
         # box_rot_quat = normalize_quaternion(box_rot_quat)
         # # patch [0,0,0,0] case
@@ -123,14 +115,48 @@ class HybridBaseline(nn.Module):
         for i in range(self.frame_num):
             box_rot_rotmat_list.append(compute_rotation_matrix_from_ortho6d(box_rot_6d_list[i]))
 
-        # if torch.any(torch.isnan(box_rot_rotmat)):
-        #     print(box_rot_quat)
-        #     print(box_rot_rotmat)
-        #     exit(-1)
+        boxroot_3d_abs_all = torch.cat(boxroot_3d_abs_list, dim = 2)
+        boxroot_3d_abs_all = torch.squeeze(boxroot_3d_abs_all)
+        box_rot_6d_all = torch.cat(box_rot_6d_list, dim = 1)
+        pose_all = torch.cat((boxroot_3d_abs_all, box_rot_6d_all), dim=1)
+        kin_mlp_input_intem = torch.cat((pose_all, box_kin_12d_intem), dim=1)
+        #kin_mlp_input_intem = torch.cat((box_rot_6d_all, box_kin_12d_intem), dim=1)
+        box_pose_21d = self.box_head_kin2(kin_mlp_input_intem)
+        box_kin_12d = box_pose_21d[:, 0:12]
+        boxroot_3d_abs_new = box_pose_21d[:, 12:15].view(-1, 1, 3)
+        box_rot_6d_new = box_pose_21d[:, 15:21]
+        box_rot_rotmat_new = compute_rotation_matrix_from_ortho6d(box_rot_6d_new)
+
+        # vel = box_kin_12d[:, 0:3]
+        # omega = box_kin_12d[:, 3:6]
+        # acc = box_kin_12d[:, 6:9]
+        # beta = box_kin_12d[:, 9:12]
+        # ref_boxroot_from_prev = boxroot_3d_abs_all[:, 0:3] + vel / 30 - 0.5 * acc / 30 ** 2
+        # ref_boxroot_from_next = boxroot_3d_abs_all[:, 6:9] - vel / 30 - 0.5 * acc / 30 ** 2
+        # delta_23 = omega / 30 + 0.5 * beta / 30 ** 2
+        # delta_12 = omega / 30 - 0.5 * beta / 30 ** 2
+        # rotmat_23 = aa_to_rotmat(delta_23)
+        # rotmat_12 = aa_to_rotmat(delta_12)
+        # box_rot_rotmat_prev = compute_rotation_matrix_from_ortho6d(box_rot_6d_list[0])
+        # box_rot_rotmat_next = compute_rotation_matrix_from_ortho6d(box_rot_6d_list[2])
+        # ref_box_rot_rotmat_from_next = torch.matmul(box_rot_rotmat_next, rotmat_23.permute(0, 2, 1))
+        # ref_box_rot_rotmat_from_prev = torch.matmul(box_rot_rotmat_prev, rotmat_12)
+        # ref_box_rot_6d_from_prev = rotmat_to_rot6d(ref_box_rot_rotmat_from_prev)
+        # ref_box_rot_6d_from_next = rotmat_to_rot6d(ref_box_rot_rotmat_from_next)
+        # #refine_input = torch.cat((pose_all, box_kin_12d, ref_boxroot_from_prev, ref_boxroot_from_next, ref_box_rot_6d_from_prev, ref_box_rot_6d_from_next), dim=1)
+        # refine_input = torch.cat((pose_all, box_kin_12d[:, 0:3], box_kin_12d[:, 6:9], ref_boxroot_from_prev, ref_boxroot_from_next), dim=1)
+        # refine_output = self.refine_net(refine_input)
+        # boxroot_3d_abs_new = refine_output[:, :3].view(-1, 1, 3)
+        # #box_rot_6d_new = refine_output[:, 3:9]
+        # box_rot_6d_new = box_rot_6d_list[1]
+        # box_rot_rotmat_new = compute_rotation_matrix_from_ortho6d(box_rot_6d_new)
+
+
         corners_3d_abs_list = []
         for i in range(self.frame_num):
             corners_3d_abs_list.append(torch.matmul(box_rot_rotmat_list[i], corners_can_3d.permute(0, 2, 1)).permute(0, 2, 1) + boxroot_3d_abs_list[i])
 
+        corners_3d_abs_new = torch.matmul(box_rot_rotmat_new, corners_can_3d.permute(0, 2, 1)).permute(0, 2, 1) + boxroot_3d_abs_new
         # TENSOR[B, 8, 3]
 
         # dispatch
@@ -155,14 +181,20 @@ class HybridBaseline(nn.Module):
         return {
             # ↓ absolute value feed to criterion
             "joints_3d_abs": joints_3d_abs,
-            "corners_3d_abs": corners_3d_abs_list[self.frame_mid],
+            "corners_3d_abs": corners_3d_abs_new,
+            "corners_3d_abs_ori": corners_3d_abs_list[self.frame_mid],
             "corners_3d_abs_list": corners_3d_abs_list,
-            "box_rot_6d": box_rot_6d_list[self.frame_mid],
+            "box_rot_6d": box_rot_6d_new,
+            "box_rot_6d_ori": box_rot_6d_list[self.frame_mid],
             "box_rot_6d_list": box_rot_6d_list,
             "box_kin_12d": box_kin_12d,
+            "corners_3d_abs_new": corners_3d_abs_new,
+            "box_rot_6d_new": box_rot_6d_new,
+            #"corners_3d_abs_refine": corners_3d_abs_refine,
             # ↓ root relative valus feed to evaluator
             "joints_3d": joints_3d_abs - root_joint.unsqueeze(1),
-            "corners_3d": corners_3d_abs_list[self.frame_mid] - root_joint.unsqueeze(1),
+            "corners_3d": corners_3d_abs_new - root_joint.unsqueeze(1),
+            #"corners_3d": corners_3d_abs_refine - root_joint.unsqueeze(1),
             "2d_uvd": final_2d_uvd,
             "boxroot_3d_abs": boxroot_3d_abs_list[self.frame_mid],
             "box_rot_rotmat": box_rot_rotmat_list[self.frame_mid],

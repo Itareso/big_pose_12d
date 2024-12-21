@@ -52,9 +52,9 @@ model = Arch(cfg, model_list=model_list)
 model = torch.nn.DataParallel(model).to(arg.device)
 model.eval()
 
-# train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
+train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
-test_loader = torch.utils.data.DataLoader(test_data,
+test_loader = torch.utils.data.DataLoader(train_data,
                                         batch_size=arg.batch_size,
                                         shuffle=False,
                                         num_workers=int(arg.workers),
@@ -72,13 +72,14 @@ gt_quat = np.empty((0, 4))
 predict_pos = np.empty((0, 3))
 predict_quat = np.empty((0, 4))
 
-save_path = "/mnt/homes/zhushengjia/OakInkDiffNew"
+#save_path = "/mnt/homes/zhushengjia/OakInkDiffNew"
+save_path = "/mnt/homes/zhushengjia/OakInkPred"
 dataset_path = "/mnt/public/datasets/OakInk"
 
 obj_dict = {}
 
-min_batch_idx = 10
-max_batch_idx = 5
+min_batch_idx = 0
+max_batch_idx = 1
 
 print("start loading oakink params")
 
@@ -94,16 +95,26 @@ with torch.no_grad():
         target_acc = batch['target_acc']
         target_beta = batch['target_beta']
         target_obj_transf = batch['obj_transf']
-        data_mean, data_std = batch["kin_data_mean"], batch["kin_data_std"]
+        #data_mean, data_std = batch["kin_data_mean"], batch["kin_data_std"]
         target_6d = torch.cat((target_vel, target_omega, target_acc, target_beta), dim=1)
         predict = model(batch)
         predict_6d = predict['HybridBaseline']['box_kin_12d']
-        data_mean, data_std = data_mean.to(predict_6d.device), data_std.to(predict_6d.device)
+        #data_mean, data_std = data_mean.to(predict_6d.device), data_std.to(predict_6d.device)
         # predict_6d = predict_6d * data_std + data_mean
         predict_vel = predict_6d[:, 0:3]
         predict_omega = predict_6d[:, 3:6]
         predict_acc = predict_6d[:, 6:9]
         predict_beta = predict_6d[:, 9:12]
+
+        corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
+        box_rot_6d = predict['HybridBaseline']["box_rot_6d"]
+        center = corner_3d_abs.mean(1).detach().cpu().numpy()
+        rot = compute_rotation_matrix_from_ortho6d(box_rot_6d).detach().cpu().numpy()
+        corner_3d_abs = corner_3d_abs.detach().cpu().numpy()
+        box_rot_6d = box_rot_6d.detach().cpu().numpy()
+
+        # if batch_idx >= min_batch_idx and batch_idx <= max_batch_idx:
+        #     print(target_acc, predict_acc)
 
         # if predict_pos2vel is None:
         #     predict_pos2vel = vel1
@@ -152,8 +163,10 @@ with torch.no_grad():
             if not os.path.exists(final_save_dir):
                 os.makedirs(final_save_dir)
             final_save_path = os.path.join(final_save_dir, save_file_name)
-            np.savez(final_save_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy())
-        #print(f"save success: batch_idx: {batch_idx}")
+            #np.savez(final_save_path, predict_vel=predict_vel[i].detach().cpu().numpy(), predict_omega=predict_omega[i].detach().cpu().numpy(), predict_acc=predict_acc[i].detach().cpu().numpy(), predict_beta=predict_beta[i].detach().cpu().numpy())
+            #print(predict_acc[i], target_acc[i])
+            np.savez(final_save_path, pred_trans = center[i], pred_rot = rot[i], pred_corner = corner_3d_abs[i], pred_boxrot = box_rot_6d[i])
+        print(f"save success: batch_idx: {batch_idx}")
 
 # predict_frompos = torch.cat((predict_pos2vel, predict_pos2omega, predict_pos2acc, predict_pos2beta), dim=1)
 

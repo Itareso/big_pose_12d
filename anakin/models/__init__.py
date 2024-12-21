@@ -6,6 +6,7 @@ from .hybridbaseline import HybridBaseline
 from .honetMANO import HoNet
 from .mano import ManoBranch
 from .hpregnet import HOPRegNet
+from .refinepipeline import RefinePipeline
 
 __all__ = [
     "Arch",
@@ -21,4 +22,5 @@ __all__ = [
     "HybridBaseline",
     "MLP_O",
     "HOPRegNet",
+    "RefinePipeline",
 ]

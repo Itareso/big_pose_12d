@@ -57,7 +57,7 @@ TRAIN:
 
 ARCH:
   TYPE: HybridBaseline
-  PRETRAINED: ''
+  PRETRAINED: 'checkpoints/HybridBaseline2335_50.pth.tar'
   FRAME_NUM: 3
   BACKBONE:
     TYPE: ResNet34
@@ -80,12 +80,12 @@ ARCH:
     FINAL_CONV_KERNEL: 1
   BOX_HEAD_KIN1:
     TYPE: MLP_O
-    LAYERS_N: [1536, 256]
-    OUT_CHANNEL: 128
+    LAYERS_N: [1536, 512]
+    OUT_CHANNEL: 256
     USE_DROPOUT: False
   BOX_HEAD_KIN2:
     TYPE: MLP_O
-    LAYERS_N: [146, 64]
+    LAYERS_N: [283, 128, 64]
     OUT_CHANNEL: 12
     USE_DROPOUT: False
   BOX_HEAD_POSE:
@@ -93,11 +93,16 @@ ARCH:
     LAYERS_N: [512, 256, 128]
     OUT_CHANNEL: 6
     USE_DROPOUT: False
+  REFINE_NET:
+    TYPE: MLP_O
+    LAYERS_N: [39, 32, 32]
+    OUT_CHANNEL: 3
+    USE_DROPOUT: False
   PREVIOUS: []
   NTASKS: 13
   DIRECT: False
 
-LAMBDAS: [0.5, 0.2, 0.5, 0.0005, 0.0005, 0.0005, 0.0005]
+LAMBDAS: [0.5, 0.2, 1.0, 0.01, 0.00001]
 CRITERION:
   - TYPE: JointsLoss
     LAMBDA_JOINTS_3D: 1.0
@@ -105,11 +110,10 @@ CRITERION:
   - TYPE: HandOrdLoss
   - TYPE: SymCornerLoss
     LAMBDA_SYM_CORNERS_3D: 1.0
+    LAMBDA_SYM_CORNERS_NEW: 0.1
     MODEL_INFO_PATH: ./assets/extend_models_info.json
   - TYPE: MSEVelLoss
   - TYPE: MSEAccLoss
-  - TYPE: MSEOmegaLoss
-  - TYPE: MSEBetaLoss
 
 EVALUATOR:
   - TYPE: LossesMetric

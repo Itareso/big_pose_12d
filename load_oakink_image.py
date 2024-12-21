@@ -61,13 +61,14 @@ set_all_seeds(cfg["TRAIN"]["MANUAL_SEED"])
 model_list = builder.build_arch_model_list(cfg["ARCH"], preset_cfg=cfg["DATA_PRESET"])
 model = Arch(cfg, model_list=model_list)
 model = torch.nn.DataParallel(model).to(arg.device)
+# model.eval()
 
 frame_num = cfg["ARCH"]["FRAME_NUM"]
 
 #train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
 test_data = builder.build_dataset(cfg["DATASET"]["TEST"], preset_cfg=cfg["DATA_PRESET"])
-#train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
-test_loader = torch.utils.data.DataLoader(test_data,
+train_data = builder.build_dataset(cfg["DATASET"]["TRAIN"], preset_cfg=cfg["DATA_PRESET"])
+test_loader = torch.utils.data.DataLoader(train_data,
                                         batch_size=arg.batch_size,
                                         shuffle=False,
                                         num_workers=int(arg.workers),
@@ -110,11 +111,13 @@ with torch.no_grad():
         predict = model(batch)
         predict_6d = predict['HybridBaseline']['box_kin_12d']
         data_mean, data_std = data_mean.to(predict_6d.device), data_std.to(predict_6d.device)
-        predict_6d = predict_6d * data_std + data_mean
+        # predict_6d = predict_6d * data_std + data_mean
         predict_vel = predict_6d[:, 0:3]
         predict_omega = predict_6d[:, 3:6]
         predict_acc = predict_6d[:, 6:9]
         predict_beta = predict_6d[:, 9:12]
+
+        print(target_acc, predict_acc)
 
         corner_3d_abs = predict['HybridBaseline']["corners_3d_abs"]
         prev_corner_3d_abs = predict['HybridBaseline']["corners_3d_abs_list"][frame_num//2-1]

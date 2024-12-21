@@ -25,8 +25,13 @@ class RTmetric(Metric):
         self.tdiff = []
 
     def feed(self, preds: Dict, targs: Dict, **kwargs):
-        corner_3d_abs = preds["corners_3d_abs"]
-        box_rot_6d = preds["box_rot_6d"]
+        try:
+            corner_3d_abs = preds["corners_3d_abs_new"]
+            box_rot_6d = preds["box_rot_6d_new"]
+        except:
+            corner_3d_abs = preds["corners_3d_abs"]
+            box_rot_6d = preds["box_rot_6d"]
+        
         T_pred = corner_3d_abs.mean(1)
         R_pred = compute_rotation_matrix_from_ortho6d(box_rot_6d)
         corners_3d_gt = targs[Queries.CORNERS_3D]
